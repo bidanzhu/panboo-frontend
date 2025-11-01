@@ -1,0 +1,18 @@
+{
+  "name": "panboo-contracts",
+  "version": "1.0.0",
+  "description": "Panboo smart contracts for BSC",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network bscTestnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network bscMainnet",
+    "verify:testnet": "hardhat run scripts/verify.ts --network bscTestnet"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^5.0.1",
+    "hardhat": "^2.19.4",
+    "typescript": "^5.3.3"
+  }
+}

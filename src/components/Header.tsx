@@ -22,20 +22,26 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center space-x-6">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  'text-sm font-medium transition-colors hover:text-primary',
-                  location.pathname === item.path
-                    ? 'text-foreground'
-                    : 'text-foreground/60'
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    'text-sm font-medium transition-colors hover:text-[#00C48C] relative pb-1',
+                    isActive
+                      ? 'text-[#00C48C]'
+                      : 'text-foreground/60'
+                  )}
+                >
+                  {item.label}
+                  {isActive && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00C48C]" />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 

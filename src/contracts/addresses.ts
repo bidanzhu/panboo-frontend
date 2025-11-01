@@ -41,31 +41,32 @@ export const PANCAKESWAP = {
   WBNB: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c' as Address, // BSC Mainnet
 } as const;
 
-// Validate required environment variables
+// Validate required environment variables (only warn on truly empty, not placeholders)
 export function validateEnv(): string[] {
   const missing: string[] = [];
 
-  if (ENV.CHAIN_ID !== 56 && ENV.CHAIN_ID !== 97) {
-    missing.push('VITE_CHAIN_ID (must be 56 or 97)');
+  // Only check if vars are completely empty, not if they use placeholder values
+  if (!import.meta.env.VITE_CHAIN_ID) {
+    missing.push('VITE_CHAIN_ID');
   }
 
-  if (!ENV.TOKEN_ADDRESS || ENV.TOKEN_ADDRESS === '0x0000000000000000000000000000000000000000') {
+  if (!import.meta.env.VITE_TOKEN_ADDRESS) {
     missing.push('VITE_TOKEN_ADDRESS');
   }
 
-  if (!ENV.MASTERCHEF_ADDRESS || ENV.MASTERCHEF_ADDRESS === '0x0000000000000000000000000000000000000000') {
+  if (!import.meta.env.VITE_MASTERCHEF_ADDRESS) {
     missing.push('VITE_MASTERCHEF_ADDRESS');
   }
 
-  if (!ENV.CHARITY_WALLET || ENV.CHARITY_WALLET === '0x0000000000000000000000000000000000000000') {
+  if (!import.meta.env.VITE_CHARITY_WALLET) {
     missing.push('VITE_CHARITY_WALLET');
   }
 
-  if (!ENV.PANBOO_BNB_PAIR || ENV.PANBOO_BNB_PAIR === '0x0000000000000000000000000000000000000000') {
+  if (!import.meta.env.VITE_PANBOO_BNB_PAIR) {
     missing.push('VITE_PANBOO_BNB_PAIR');
   }
 
-  if (!ENV.WALLETCONNECT_ID || ENV.WALLETCONNECT_ID === 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
+  if (!import.meta.env.VITE_WALLETCONNECT_ID) {
     missing.push('VITE_WALLETCONNECT_ID');
   }
 

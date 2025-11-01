@@ -5,6 +5,7 @@ import { useTokenPrice, useCharitySummary, useFarmsSummary } from '@/hooks';
 import { formatUSD } from '@/utils';
 import { ArrowRight, TrendingUp, Heart, Droplets, Leaf } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 
 export function Home() {
   const { data: tokenPrice, isLoading: isPriceLoading } = useTokenPrice();
@@ -96,6 +97,21 @@ interface SummaryCardProps {
 }
 
 function SummaryCard({ title, value, isLoading, icon }: SummaryCardProps) {
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+
+  useEffect(() => {
+    if (!isLoading) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      setLastUpdated(timeStr);
+    }
+  }, [isLoading, value]);
+
   return (
     <Card>
       <CardContent className="pt-6">
@@ -104,9 +120,14 @@ function SummaryCard({ title, value, isLoading, icon }: SummaryCardProps) {
           <div className="text-[#00C48C]">{icon}</div>
         </div>
         {isLoading ? (
-          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-8 w-32 mb-2" />
         ) : (
-          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-2xl font-bold mb-1">{value}</p>
+        )}
+        {!isLoading && lastUpdated && (
+          <p className="text-xs text-muted-foreground">
+            Last updated {lastUpdated}
+          </p>
         )}
       </CardContent>
     </Card>
