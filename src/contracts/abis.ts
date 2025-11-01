@@ -65,16 +65,34 @@ export const MASTERCHEF_ABI = [
 export const PANBOO_TOKEN_ABI = [
   ...ERC20_ABI,
 
+  // Ownable
+  'function owner() view returns (address)',
+
   // Tax-related view functions
-  'function buyTax() view returns (uint256)',
-  'function sellTax() view returns (uint256)',
-  'function isExcludedFromFees(address account) view returns (bool)',
-  'function charityWallet() view returns (address)',
+  'function buyTaxBps() view returns (uint256)',
+  'function sellTaxBps() view returns (uint256)',
   'function swapThreshold() view returns (uint256)',
+  'function swapEnabled() view returns (bool)',
+  'function charityWallet() view returns (address)',
+  'function pancakeRouter() view returns (address)',
+  'function pancakePair() view returns (address)',
+  'function isExcludedFromTax(address account) view returns (bool)',
+
+  // Admin functions
+  'function setTaxRates(uint256 newBuyTax, uint256 newSellTax)',
+  'function setSwapThreshold(uint256 newThreshold)',
+  'function setSwapEnabled(bool enabled)',
+  'function setCharityWallet(address newWallet)',
+  'function setExcludedFromTax(address account, bool excluded)',
+  'function manualSwapAndDonate()',
 
   // Events
   'event Donated(uint256 tokensSold, uint256 bnbSent, address indexed to, uint256 timestamp)',
   'event TaxCollected(address indexed from, address indexed pair, uint256 amount, bool isSell)',
+  'event SwapThresholdUpdated(uint256 newThreshold)',
+  'event SwapEnabledUpdated(bool enabled)',
+  'event CharityWalletUpdated(address indexed newWallet)',
+  'event TaxRatesUpdated(uint256 buyTax, uint256 sellTax)',
 ] as const;
 
 // Multicall3 ABI

@@ -6,6 +6,7 @@ import { Home } from './pages/Home';
 import { Swap } from './pages/Swap';
 import { Farms } from './pages/Farms';
 import { Charity } from './pages/Charity';
+import { Admin } from './pages/Admin';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
             <Route path="/swap" element={<Swap />} />
             <Route path="/farms" element={<Farms />} />
             <Route path="/charity" element={<Charity />} />
+            <Route path="/admin" element={<Admin />} />
           </Routes>
         </main>
 
