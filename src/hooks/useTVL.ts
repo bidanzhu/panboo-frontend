@@ -20,48 +20,48 @@ export function useTVL(pools: Pool[] = []) {
       // Pool info from MasterChef
       {
         address: ADDRESSES.MASTERCHEF,
-        abi: MASTERCHEF_ABI,
+        abi: MASTERCHEF_ABI as any,
         functionName: 'poolInfo',
         args: [BigInt(pool.pid)],
       },
       // LP token decimals
       {
         address: pool.lpAddress as `0x${string}`,
-        abi: ERC20_ABI,
+        abi: ERC20_ABI as any,
         functionName: 'decimals',
       },
       // LP total supply
       {
         address: pool.lpAddress as `0x${string}`,
-        abi: PAIR_ABI,
+        abi: PAIR_ABI as any,
         functionName: 'totalSupply',
       },
       // LP reserves
       {
         address: pool.lpAddress as `0x${string}`,
-        abi: PAIR_ABI,
+        abi: PAIR_ABI as any,
         functionName: 'getReserves',
       },
       // Token0
       {
         address: pool.lpAddress as `0x${string}`,
-        abi: PAIR_ABI,
+        abi: PAIR_ABI as any,
         functionName: 'token0',
       },
       // Token1
       {
         address: pool.lpAddress as `0x${string}`,
-        abi: PAIR_ABI,
+        abi: PAIR_ABI as any,
         functionName: 'token1',
       },
       // LP balance in MasterChef (total staked)
       {
         address: pool.lpAddress as `0x${string}`,
-        abi: ERC20_ABI,
+        abi: ERC20_ABI as any,
         functionName: 'balanceOf',
         args: [ADDRESSES.MASTERCHEF],
       },
-    ]),
+    ]) as any,
     query: {
       enabled: pools.length > 0 && ADDRESSES.MASTERCHEF !== '0x0000000000000000000000000000000000000000',
     },

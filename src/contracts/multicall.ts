@@ -1,4 +1,4 @@
-import { Contract, Interface } from 'ethers';
+import { Contract, Interface, type ContractRunner } from 'ethers';
 import { MULTICALL3_ABI } from './abis';
 import { getMulticall3Address } from './addresses';
 import type { Call3, Call3Result } from '@/types/contracts';
@@ -54,7 +54,7 @@ export function decodeResult<T>(
 /**
  * Create a Multicall3 contract instance
  */
-export function createMulticallContract(provider: unknown): Contract {
+export function createMulticallContract(provider: ContractRunner | null): Contract {
   const address = getMulticall3Address();
   return new Contract(address, MULTICALL3_ABI, provider);
 }
@@ -64,7 +64,7 @@ export function createMulticallContract(provider: unknown): Contract {
  * This is a utility function that can be used with ethers provider
  */
 export async function executeMulticall(
-  provider: unknown,
+  provider: ContractRunner | null,
   calls: Call3[]
 ): Promise<Call3Result[]> {
   try {
@@ -98,7 +98,7 @@ export interface MulticallRequest {
  * Returns an array of results in the same order as requests
  */
 export async function batchCall<T>(
-  provider: unknown,
+  provider: ContractRunner | null,
   requests: MulticallRequest[]
 ): Promise<(T | null)[]> {
   // Encode all calls
@@ -127,7 +127,7 @@ export interface TokenBalance {
 }
 
 export async function getTokenBalances(
-  provider: unknown,
+  provider: ContractRunner | null,
   tokenAbi: readonly string[],
   tokens: string[],
   account: string
@@ -156,7 +156,7 @@ export interface TokenDecimals {
 }
 
 export async function getTokenDecimals(
-  provider: unknown,
+  provider: ContractRunner | null,
   tokenAbi: readonly string[],
   tokens: string[]
 ): Promise<TokenDecimals[]> {
@@ -184,7 +184,7 @@ export interface TokenAllowance {
 }
 
 export async function getTokenAllowances(
-  provider: unknown,
+  provider: ContractRunner | null,
   tokenAbi: readonly string[],
   tokens: string[],
   owner: string,
