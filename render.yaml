@@ -1,11 +1,12 @@
 services:
-  - type: static
+  - type: web
     name: panboo-frontend
+    env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_CHAIN_ID
-        value: 56
+        value: "56"
       - key: VITE_TOKEN_ADDRESS
         value: "0x0000000000000000000000000000000000000000"
       - key: VITE_MASTERCHEF_ADDRESS
@@ -15,15 +16,15 @@ services:
       - key: VITE_PANBOO_BNB_PAIR
         value: "0x0000000000000000000000000000000000000000"
       - key: VITE_API_URL
-        value: https://panboo-api.onrender.com
+        value: "https://panboo-api.onrender.com"
       - key: VITE_RPC_URL
-        value: https://bsc-dataseed.binance.org
+        value: "https://bsc-dataseed.binance.org"
       - key: VITE_WALLETCONNECT_ID
-        value: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        value: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       - key: VITE_ENABLE_LIVE_FEED
-        value: true
+        value: "true"
       - key: VITE_ENABLE_FAKE_DATA
-        value: false
+        value: "false"
     routes:
       - type: rewrite
         source: /*
