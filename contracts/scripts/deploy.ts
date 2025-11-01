@@ -10,13 +10,13 @@ async function main() {
   console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "BNB\n");
 
   // Configuration
-  const TOKEN_NAME = "Panboo Token";
-  const TOKEN_SYMBOL = "PANBOO";
-  const TOTAL_SUPPLY = ethers.parseUnits("1000000000", 18); // 1 billion tokens
+  const TOKEN_NAME = "Panboo";
+  const TOKEN_SYMBOL = "PNB";
+  const TOTAL_SUPPLY = ethers.parseUnits("10000000000", 18); // 10 billion tokens
   const CHARITY_WALLET = process.env.CHARITY_WALLET || deployer.address;
   const PANCAKE_ROUTER = "0x10ED43C718714eb63d5aA57B78B54704E256024E"; // BSC Mainnet (use 0xD99D1c33F9fC3444f8101754aBC46c52416550D1 for testnet)
 
-  // Reward emission: 10 PANBOO per block (~3 seconds)
+  // Reward emission: 10 PNB per block (~3 seconds)
   const REWARD_PER_BLOCK = ethers.parseUnits("10", 18);
   const START_BLOCK = await ethers.provider.getBlockNumber() + 100; // Start in ~5 minutes
 
@@ -25,7 +25,7 @@ async function main() {
   console.log("- Token Symbol:", TOKEN_SYMBOL);
   console.log("- Total Supply:", ethers.formatUnits(TOTAL_SUPPLY, 18));
   console.log("- Charity Wallet:", CHARITY_WALLET);
-  console.log("- Reward Per Block:", ethers.formatUnits(REWARD_PER_BLOCK, 18), "PANBOO");
+  console.log("- Reward Per Block:", ethers.formatUnits(REWARD_PER_BLOCK, 18), "PNB");
   console.log("- Start Block:", START_BLOCK);
   console.log();
 
@@ -63,15 +63,15 @@ async function main() {
   console.log();
 
   // Transfer tokens to MasterChef for rewards
-  const REWARD_POOL = ethers.parseUnits("100000000", 18); // 100M tokens for staking rewards
-  console.log("💰 Transferring", ethers.formatUnits(REWARD_POOL, 18), "PANBOO to MasterChef...");
+  const REWARD_POOL = ethers.parseUnits("1000000000", 18); // 1B tokens for staking rewards (10% of supply)
+  console.log("💰 Transferring", ethers.formatUnits(REWARD_POOL, 18), "PNB to MasterChef...");
   const transferTx = await panbooToken.transfer(masterChefAddress, REWARD_POOL);
   await transferTx.wait();
   console.log("✅ Reward pool funded");
   console.log();
 
-  // Add initial pool (PANBOO/BNB LP)
-  console.log("🌾 Adding PANBOO/BNB LP pool to MasterChef...");
+  // Add initial pool (PNB/BNB LP)
+  console.log("🌾 Adding PNB/BNB LP pool to MasterChef...");
   const addPoolTx = await masterChef.add(
     1000, // allocation points
     pancakePair,

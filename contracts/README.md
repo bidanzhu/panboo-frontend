@@ -6,8 +6,12 @@ Smart contracts for the Panboo DeFi-for-Charity platform on BNB Smart Chain.
 
 ### PanbooToken.sol
 BEP-20 token with automatic charity donations:
+- **Name:** Panboo
+- **Symbol:** PNB
+- **Decimals:** 18
+- **Total Supply:** 10,000,000,000 PNB (10 billion)
 - **Buy Tax:** 3%
-- **Sell Tax:** 5%
+- **Sell Tax:** 7%
 - **Auto Swap & Donate:** Converts accumulated tax to BNB and sends to charity wallet
 - **Threshold:** 100k tokens (configurable)
 - **Features:** Reentrancy protected, owner-controlled tax rates
@@ -15,7 +19,7 @@ BEP-20 token with automatic charity donations:
 ### MasterChef.sol
 Staking contract for LP token rewards:
 - Supports multiple staking pools
-- Configurable reward emission rate (default: 10 PANBOO/block)
+- Configurable reward emission rate (default: 10 PNB/block)
 - Deposit, withdraw, harvest, and emergency withdraw functions
 - Pending rewards calculation
 - Owner can adjust emission rate and add/update pools

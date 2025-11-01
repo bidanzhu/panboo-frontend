@@ -25,7 +25,7 @@ interface IPancakeFactory {
  * @dev BEP-20 token with automatic charity donations on every trade
  *
  * Features:
- * - 3% buy tax, 5% sell tax
+ * - 3% buy tax, 7% sell tax
  * - Tax accumulates in contract buffer
  * - Automatic swap & donate when threshold reached
  * - Reentrancy protected
@@ -34,7 +34,7 @@ interface IPancakeFactory {
 contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     // Tax rates (in basis points: 100 = 1%)
     uint256 public buyTaxBps = 300;  // 3%
-    uint256 public sellTaxBps = 500; // 5%
+    uint256 public sellTaxBps = 700; // 7%
 
     // Swap settings
     uint256 public swapThreshold = 100_000 * 10**18; // 100k tokens
