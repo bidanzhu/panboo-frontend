@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Hardhat files
+cache/
+artifacts/
+typechain-types/
+
+# Environment files
+.env
+.env.test
+.env.local
+
+# Coverage reports
+coverage/
+coverage.json
+
+# Gas reports
+gasReporterOutput.json
+
+# Hardhat TypeChain
+typechain/
+
+# Build info
+*.dbg.json

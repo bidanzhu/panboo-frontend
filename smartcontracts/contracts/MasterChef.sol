@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title MasterChef
@@ -20,6 +20,18 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 contract MasterChef is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    // Accumulated rewards precision
+    uint256 private constant ACC_PRECISION = 1e12;
+
+    // Maximum number of pools to prevent gas issues in massUpdatePools
+    uint256 public constant MAX_POOLS = 50;
+
+    // Maximum emission rate to prevent owner abuse (100 tokens per block = 2.88M per day on BSC)
+    uint256 public constant MAX_REWARD_PER_BLOCK = 100 * 10**18;
+
+    // Minimum stake amount to prevent dust attacks
+    uint256 public minStakeAmount = 1000; // 1000 wei minimum (configurable)
+
     // Info of each user
     struct UserInfo {
         uint256 amount;        // How many LP tokens the user has provided
@@ -32,7 +44,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
         IERC20 lpToken;           // Address of LP token contract
         uint256 allocPoint;       // Allocation points assigned to this pool
         uint256 lastRewardBlock;  // Last block number that reward distribution occurred
-        uint256 accRewardPerShare; // Accumulated rewards per share, times 1e12
+        uint256 accRewardPerShare; // Accumulated rewards per share, times ACC_PRECISION
         uint256 totalStaked;      // Total LP tokens staked in this pool
     }
 
@@ -81,7 +93,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
     event Harvest(
         address indexed user,
         uint256 indexed pid,
-        uint256 amount
+        uint256 amount,
+        uint256 carry
     );
 
     event EmergencyWithdraw(
@@ -96,11 +109,22 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 newRate
     );
 
+    event TokenRecovered(
+        address indexed token,
+        uint256 amount
+    );
+
+    event MinStakeAmountUpdated(uint256 newAmount);
+
     constructor(
         IERC20 _rewardToken,
         uint256 _rewardPerBlock,
         uint256 _startBlock
     ) Ownable(msg.sender) {
+        require(address(_rewardToken) != address(0), "Reward token cannot be zero address");
+        require(_rewardPerBlock > 0, "Reward per block must be > 0");
+        require(_rewardPerBlock <= MAX_REWARD_PER_BLOCK, "Emission rate too high");
+
         rewardToken = _rewardToken;
         rewardPerBlock = _rewardPerBlock;
         startBlock = _startBlock;
@@ -121,6 +145,14 @@ contract MasterChef is Ownable, ReentrancyGuard {
         IERC20 _lpToken,
         bool _withUpdate
     ) external onlyOwner {
+        require(poolInfo.length < MAX_POOLS, "Maximum pools reached");
+        require(_lpToken != rewardToken, "LP cannot be reward token");
+
+        // Prevent duplicate pools
+        for (uint256 i = 0; i < poolInfo.length; i++) {
+            require(address(poolInfo[i].lpToken) != address(_lpToken), "Pool already exists");
+        }
+
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -147,6 +179,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 _allocPoint,
         bool _withUpdate
     ) external onlyOwner {
+        require(_pid < poolInfo.length, "Invalid pool ID");
+
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -173,13 +207,13 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 accRewardPerShare = pool.accRewardPerShare;
         uint256 lpSupply = pool.totalStaked;
 
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
+        if (block.number > pool.lastRewardBlock && lpSupply != 0 && totalAllocPoint != 0 && pool.allocPoint != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 reward = (multiplier * rewardPerBlock * pool.allocPoint) / totalAllocPoint;
-            accRewardPerShare += (reward * 1e12) / lpSupply;
+            accRewardPerShare += (reward * ACC_PRECISION) / lpSupply;
         }
 
-        return ((user.amount * accRewardPerShare) / 1e12) - user.rewardDebt + user.pendingRewards;
+        return ((user.amount * accRewardPerShare) / ACC_PRECISION) - user.rewardDebt + user.pendingRewards;
     }
 
     /**
@@ -204,7 +238,13 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
         uint256 lpSupply = pool.totalStaked;
 
-        if (lpSupply == 0) {
+        if (lpSupply == 0 || pool.allocPoint == 0) {
+            pool.lastRewardBlock = block.number;
+            return;
+        }
+
+        // Prevent division by zero if all pools are disabled
+        if (totalAllocPoint == 0) {
             pool.lastRewardBlock = block.number;
             return;
         }
@@ -212,7 +252,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 reward = (multiplier * rewardPerBlock * pool.allocPoint) / totalAllocPoint;
 
-        pool.accRewardPerShare += (reward * 1e12) / lpSupply;
+        pool.accRewardPerShare += (reward * ACC_PRECISION) / lpSupply;
         pool.lastRewardBlock = block.number;
     }
 
@@ -226,19 +266,26 @@ contract MasterChef is Ownable, ReentrancyGuard {
         updatePool(_pid);
 
         if (user.amount > 0) {
-            uint256 pending = ((user.amount * pool.accRewardPerShare) / 1e12) - user.rewardDebt;
+            uint256 pending = ((user.amount * pool.accRewardPerShare) / ACC_PRECISION) - user.rewardDebt;
             if (pending > 0) {
                 user.pendingRewards += pending;
             }
         }
 
         if (_amount > 0) {
+            require(_amount >= minStakeAmount, "Below minimum stake");
+
+            // Use balance-delta accounting to handle fee-on-transfer tokens
+            uint256 before = pool.lpToken.balanceOf(address(this));
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
-            user.amount += _amount;
-            pool.totalStaked += _amount;
+            uint256 received = pool.lpToken.balanceOf(address(this)) - before;
+
+            require(received >= minStakeAmount, "Received amount too small");
+            user.amount += received;
+            pool.totalStaked += received;
         }
 
-        user.rewardDebt = (user.amount * pool.accRewardPerShare) / 1e12;
+        user.rewardDebt = (user.amount * pool.accRewardPerShare) / ACC_PRECISION;
 
         emit Deposit(msg.sender, _pid, _amount);
     }
@@ -254,20 +301,27 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
         updatePool(_pid);
 
-        uint256 pending = ((user.amount * pool.accRewardPerShare) / 1e12) - user.rewardDebt;
+        uint256 pending = ((user.amount * pool.accRewardPerShare) / ACC_PRECISION) - user.rewardDebt;
         if (pending > 0) {
             user.pendingRewards += pending;
         }
 
+        uint256 sent = 0;
         if (_amount > 0) {
-            user.amount -= _amount;
-            pool.totalStaked -= _amount;
+            // Use balance-delta accounting to handle fee-on-transfer tokens
+            uint256 before = pool.lpToken.balanceOf(address(this));
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            sent = before - pool.lpToken.balanceOf(address(this));
+            require(sent > 0, "Withdraw: token didn't transfer");
+
+            // Account by what actually left the contract
+            user.amount -= sent;
+            pool.totalStaked -= sent;
         }
 
-        user.rewardDebt = (user.amount * pool.accRewardPerShare) / 1e12;
+        user.rewardDebt = (user.amount * pool.accRewardPerShare) / ACC_PRECISION;
 
-        emit Withdraw(msg.sender, _pid, _amount);
+        emit Withdraw(msg.sender, _pid, sent);
     }
 
     /**
@@ -279,16 +333,25 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
         updatePool(_pid);
 
-        uint256 pending = ((user.amount * pool.accRewardPerShare) / 1e12) - user.rewardDebt;
+        uint256 pending = ((user.amount * pool.accRewardPerShare) / ACC_PRECISION) - user.rewardDebt;
         uint256 totalPending = pending + user.pendingRewards;
 
         if (totalPending > 0) {
-            user.pendingRewards = 0;
-            safeRewardTransfer(msg.sender, totalPending);
-            emit Harvest(msg.sender, _pid, totalPending);
+            // Handle underfunded scenario: only pay what's available, carry forward the rest
+            uint256 bal = rewardToken.balanceOf(address(this));
+            uint256 payout = totalPending > bal ? bal : totalPending;
+            uint256 carry = totalPending - payout;
+
+            if (payout > 0) {
+                rewardToken.safeTransfer(msg.sender, payout);
+            }
+            user.pendingRewards = carry; // Keep unpaid amount for next harvest
+            emit Harvest(msg.sender, _pid, payout, carry);
+        } else {
+            emit Harvest(msg.sender, _pid, 0, 0);
         }
 
-        user.rewardDebt = (user.amount * pool.accRewardPerShare) / 1e12;
+        user.rewardDebt = (user.amount * pool.accRewardPerShare) / ACC_PRECISION;
     }
 
     /**
@@ -310,21 +373,10 @@ contract MasterChef is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Safe reward transfer (in case of rounding errors)
-     */
-    function safeRewardTransfer(address _to, uint256 _amount) internal {
-        uint256 rewardBal = rewardToken.balanceOf(address(this));
-        if (_amount > rewardBal) {
-            rewardToken.safeTransfer(_to, rewardBal);
-        } else {
-            rewardToken.safeTransfer(_to, _amount);
-        }
-    }
-
-    /**
      * @dev Update emission rate (owner only)
      */
     function updateEmissionRate(uint256 _rewardPerBlock) external onlyOwner {
+        require(_rewardPerBlock <= MAX_REWARD_PER_BLOCK, "Emission rate too high");
         massUpdatePools();
         uint256 oldRate = rewardPerBlock;
         rewardPerBlock = _rewardPerBlock;
@@ -332,10 +384,43 @@ contract MasterChef is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Helper to calculate total staked amount for a given token across all pools
+     */
+    function _stakedForToken(IERC20 _token) internal view returns (uint256 total) {
+        for (uint256 i = 0; i < poolInfo.length; ++i) {
+            if (address(poolInfo[i].lpToken) == address(_token)) {
+                total += poolInfo[i].totalStaked;
+            }
+        }
+    }
+
+    /**
+     * @dev Update minimum stake amount (owner only)
+     */
+    function setMinStakeAmount(uint256 _minStakeAmount) external onlyOwner {
+        minStakeAmount = _minStakeAmount;
+        emit MinStakeAmountUpdated(_minStakeAmount);
+    }
+
+    /**
      * @dev Emergency function to recover stuck tokens (owner only)
+     * @notice Can only recover tokens that are not staked in any pool
      */
     function recoverToken(IERC20 _token, uint256 _amount) external onlyOwner {
         require(_token != rewardToken, "Cannot recover reward token");
+
+        // Disallow recovering any configured LP token
+        for (uint256 i = 0; i < poolInfo.length; ++i) {
+            require(_token != poolInfo[i].lpToken, "Cannot recover LP tokens");
+        }
+
+        // Calculate excess (balance - total staked)
+        uint256 bal = _token.balanceOf(address(this));
+        uint256 staked = _stakedForToken(_token);
+        uint256 excess = bal > staked ? (bal - staked) : 0;
+
+        require(_amount <= excess, "Exceeds excess");
         _token.safeTransfer(msg.sender, _amount);
+        emit TokenRecovered(address(_token), _amount);
     }
 }

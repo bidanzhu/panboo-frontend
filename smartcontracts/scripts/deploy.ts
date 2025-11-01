@@ -16,8 +16,9 @@ async function main() {
   const CHARITY_WALLET = process.env.CHARITY_WALLET || deployer.address;
   const PANCAKE_ROUTER = "0x10ED43C718714eb63d5aA57B78B54704E256024E"; // BSC Mainnet (use 0xD99D1c33F9fC3444f8101754aBC46c52416550D1 for testnet)
 
-  // Reward emission: 10 PNB per block (~3 seconds)
-  const REWARD_PER_BLOCK = ethers.parseUnits("10", 18);
+  // Reward emission: 100 PNB per block (~3 seconds) - Bootstrap phase
+  // This gives ~53% APR with moderate TVL. Adjust via admin panel as needed.
+  const REWARD_PER_BLOCK = ethers.parseUnits("100", 18);
   const START_BLOCK = await ethers.provider.getBlockNumber() + 100; // Start in ~5 minutes
 
   console.log("Configuration:");
@@ -62,8 +63,15 @@ async function main() {
   console.log("✅ MasterChef deployed to:", masterChefAddress);
   console.log();
 
+  // Exclude MasterChef from tax
+  console.log("⚙️  Excluding MasterChef from tax...");
+  const excludeTx = await panbooToken.setExcludedFromTax(masterChefAddress, true);
+  await excludeTx.wait();
+  console.log("✅ MasterChef excluded from tax");
+  console.log();
+
   // Transfer tokens to MasterChef for rewards
-  const REWARD_POOL = ethers.parseUnits("1000000000", 18); // 1B tokens for staking rewards (10% of supply)
+  const REWARD_POOL = ethers.parseUnits("2500000000", 18); // 2.5B tokens for staking rewards (25% of supply)
   console.log("💰 Transferring", ethers.formatUnits(REWARD_POOL, 18), "PNB to MasterChef...");
   const transferTx = await panbooToken.transfer(masterChefAddress, REWARD_POOL);
   await transferTx.wait();

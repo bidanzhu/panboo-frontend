@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { ADDRESSES } from '@/contracts/addresses';
-import { PANBOO_TOKEN_ABI } from '@/contracts/abis';
+import { PANBOO_TOKEN_ABI, MASTERCHEF_ABI } from '@/contracts/abis';
 import { parseUnits, formatUnits } from 'ethers';
 import { Shield, AlertCircle, Settings, Heart, Zap, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
@@ -53,11 +53,82 @@ export function Admin() {
     functionName: 'swapEnabled',
   });
 
-  // Form states
+  const { data: tradingEnabled, refetch: refetchTradingEnabled } = useReadContract({
+    address: ADDRESSES.PANBOO_TOKEN,
+    abi: PANBOO_TOKEN_ABI,
+    functionName: 'tradingEnabled',
+  });
+
+  // Read MasterChef settings
+  const { data: rewardPerBlock, refetch: refetchRewardPerBlock } = useReadContract({
+    address: ADDRESSES.MASTERCHEF,
+    abi: MASTERCHEF_ABI,
+    functionName: 'rewardPerBlock',
+  });
+
+  const { data: poolLength } = useReadContract({
+    address: ADDRESSES.MASTERCHEF,
+    abi: MASTERCHEF_ABI,
+    functionName: 'poolLength',
+  });
+
+  const { data: totalAllocPoint, refetch: refetchTotalAllocPoint } = useReadContract({
+    address: ADDRESSES.MASTERCHEF,
+    abi: MASTERCHEF_ABI,
+    functionName: 'totalAllocPoint',
+  });
+
+  // Form states (declared early so they can be used in hooks)
   const [newBuyTax, setNewBuyTax] = useState('');
   const [newSellTax, setNewSellTax] = useState('');
   const [newCharityWallet, setNewCharityWallet] = useState('');
   const [newSwapThreshold, setNewSwapThreshold] = useState('');
+  const [newEmissionRate, setNewEmissionRate] = useState('');
+  const [excludeAddress, setExcludeAddress] = useState('');
+  const [checkExcludeAddress, setCheckExcludeAddress] = useState('');
+  const [newPoolLpToken, setNewPoolLpToken] = useState('');
+  const [newPoolAllocPoint, setNewPoolAllocPoint] = useState('');
+  const [updatePoolId, setUpdatePoolId] = useState('');
+  const [updatePoolAllocPoint, setUpdatePoolAllocPoint] = useState('');
+
+  // Check if address is excluded from tax
+  const { data: isExcluded, refetch: refetchExcluded } = useReadContract({
+    address: ADDRESSES.PANBOO_TOKEN,
+    abi: PANBOO_TOKEN_ABI,
+    functionName: 'isExcludedFromTax',
+    args: checkExcludeAddress && checkExcludeAddress.startsWith('0x') ? [checkExcludeAddress as `0x${string}`] : undefined,
+  });
+
+  // Tax timelock data
+  const { data: hasPendingTaxChange, refetch: refetchPendingTax } = useReadContract({
+    address: ADDRESSES.PANBOO_TOKEN,
+    abi: PANBOO_TOKEN_ABI,
+    functionName: 'hasPendingTaxChange',
+  });
+
+  const { data: pendingBuyTaxBps } = useReadContract({
+    address: ADDRESSES.PANBOO_TOKEN,
+    abi: PANBOO_TOKEN_ABI,
+    functionName: 'pendingBuyTaxBps',
+  });
+
+  const { data: pendingSellTaxBps } = useReadContract({
+    address: ADDRESSES.PANBOO_TOKEN,
+    abi: PANBOO_TOKEN_ABI,
+    functionName: 'pendingSellTaxBps',
+  });
+
+  const { data: taxChangeTimestamp } = useReadContract({
+    address: ADDRESSES.PANBOO_TOKEN,
+    abi: PANBOO_TOKEN_ABI,
+    functionName: 'taxChangeTimestamp',
+  });
+
+  const { data: taxChangeDelay } = useReadContract({
+    address: ADDRESSES.PANBOO_TOKEN,
+    abi: PANBOO_TOKEN_ABI,
+    functionName: 'TAX_CHANGE_DELAY',
+  });
 
   // Update form when data loads
   useEffect(() => {
@@ -73,7 +144,10 @@ export function Admin() {
     if (charityWallet) {
       setNewCharityWallet(charityWallet as string);
     }
-  }, [buyTaxBps, sellTaxBps, swapThreshold, charityWallet]);
+    if (rewardPerBlock !== undefined) {
+      setNewEmissionRate(formatUnits(rewardPerBlock as bigint, 18));
+    }
+  }, [buyTaxBps, sellTaxBps, swapThreshold, charityWallet, rewardPerBlock]);
 
   const { writeContractAsync } = useWriteContract();
   const [pendingTx, setPendingTx] = useState<string | null>(null);
@@ -86,8 +160,8 @@ export function Admin() {
   const isOwner = isConnected && address && contractOwner &&
     address.toLowerCase() === (contractOwner as string).toLowerCase();
 
-  // Update tax rates
-  const handleUpdateTaxRates = async () => {
+  // Schedule tax rate change (24hr timelock)
+  const handleScheduleTaxChange = async () => {
     if (!ensureReady()) return;
 
     try {
@@ -104,26 +178,76 @@ export function Admin() {
         return;
       }
 
-      toast.info('Updating tax rates...');
+      toast.info('Scheduling tax change (24hr timelock)...');
 
       const hash = await writeContractAsync({
         address: ADDRESSES.PANBOO_TOKEN,
         abi: PANBOO_TOKEN_ABI,
-        functionName: 'setTaxRates',
+        functionName: 'scheduleTaxRateChange',
         args: [BigInt(buyBps), BigInt(sellBps)],
       });
 
       setPendingTx(hash);
       toast.success('Transaction submitted!');
 
-      // Wait for confirmation
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      refetchPendingTax();
+      toast.success(`Tax change scheduled! Executes in 24 hours.`);
+    } catch (error: any) {
+      console.error('Error scheduling tax change:', error);
+      toast.error(error?.message || 'Failed to schedule tax change');
+    }
+  };
+
+  // Execute pending tax change
+  const handleExecuteTaxChange = async () => {
+    if (!ensureReady()) return;
+
+    try {
+      toast.info('Executing tax change...');
+
+      const hash = await writeContractAsync({
+        address: ADDRESSES.PANBOO_TOKEN,
+        abi: PANBOO_TOKEN_ABI,
+        functionName: 'executeTaxRateChange',
+      });
+
+      setPendingTx(hash);
+      toast.success('Transaction submitted!');
+
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchBuyTax();
       refetchSellTax();
-      toast.success(`Tax rates updated: ${newBuyTax}% buy, ${newSellTax}% sell`);
+      refetchPendingTax();
+      toast.success('Tax rates updated!');
     } catch (error: any) {
-      console.error('Error updating tax rates:', error);
-      toast.error(error?.message || 'Failed to update tax rates');
+      console.error('Error executing tax change:', error);
+      toast.error(error?.message || 'Failed to execute tax change');
+    }
+  };
+
+  // Cancel pending tax change
+  const handleCancelTaxChange = async () => {
+    if (!ensureReady()) return;
+
+    try {
+      toast.info('Cancelling tax change...');
+
+      const hash = await writeContractAsync({
+        address: ADDRESSES.PANBOO_TOKEN,
+        abi: PANBOO_TOKEN_ABI,
+        functionName: 'cancelTaxRateChange',
+      });
+
+      setPendingTx(hash);
+      toast.success('Transaction submitted!');
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      refetchPendingTax();
+      toast.success('Tax change cancelled!');
+    } catch (error: any) {
+      console.error('Error cancelling tax change:', error);
+      toast.error(error?.message || 'Failed to cancel tax change');
     }
   };
 
@@ -213,6 +337,33 @@ export function Admin() {
     }
   };
 
+  // Toggle trading enabled (circuit breaker)
+  const handleToggleTrading = async () => {
+    if (!ensureReady()) return;
+
+    try {
+      const newState = !tradingEnabled;
+      toast.info(`${newState ? 'Enabling' : 'Disabling'} trading...`);
+
+      const hash = await writeContractAsync({
+        address: ADDRESSES.PANBOO_TOKEN,
+        abi: PANBOO_TOKEN_ABI,
+        functionName: 'setTradingEnabled',
+        args: [newState],
+      });
+
+      setPendingTx(hash);
+      toast.success('Transaction submitted!');
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      refetchTradingEnabled();
+      toast.success(`Trading ${newState ? 'enabled' : 'disabled'}!`);
+    } catch (error: any) {
+      console.error('Error toggling trading:', error);
+      toast.error(error?.message || 'Failed to toggle trading');
+    }
+  };
+
   // Manual swap and donate
   const handleManualSwap = async () => {
     if (!ensureReady()) return;
@@ -234,6 +385,159 @@ export function Admin() {
     } catch (error: any) {
       console.error('Error during manual swap:', error);
       toast.error(error?.message || 'Failed to execute manual swap');
+    }
+  };
+
+  // Update emission rate
+  const handleUpdateEmissionRate = async () => {
+    if (!ensureReady()) return;
+
+    try {
+      const emissionRateBN = parseUnits(newEmissionRate, 18);
+
+      if (Number(newEmissionRate) < 0) {
+        toast.error('Emission rate cannot be negative');
+        return;
+      }
+
+      toast.info('Updating emission rate...');
+
+      const hash = await writeContractAsync({
+        address: ADDRESSES.MASTERCHEF,
+        abi: MASTERCHEF_ABI,
+        functionName: 'updateEmissionRate',
+        args: [emissionRateBN],
+      });
+
+      setPendingTx(hash);
+      toast.success('Transaction submitted!');
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      refetchRewardPerBlock();
+      toast.success(`Emission rate updated to ${newEmissionRate} PNB/block`);
+    } catch (error: any) {
+      console.error('Error updating emission rate:', error);
+      toast.error(error?.message || 'Failed to update emission rate');
+    }
+  };
+
+  // Toggle tax exclusion
+  const handleToggleTaxExclusion = async (addressToToggle: string, exclude: boolean) => {
+    if (!ensureReady()) return;
+
+    try {
+      if (!addressToToggle || !addressToToggle.startsWith('0x')) {
+        toast.error('Invalid wallet address');
+        return;
+      }
+
+      toast.info(`${exclude ? 'Excluding' : 'Including'} address from tax...`);
+
+      const hash = await writeContractAsync({
+        address: ADDRESSES.PANBOO_TOKEN,
+        abi: PANBOO_TOKEN_ABI,
+        functionName: 'setExcludedFromTax',
+        args: [addressToToggle as `0x${string}`, exclude],
+      });
+
+      setPendingTx(hash);
+      toast.success('Transaction submitted!');
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      refetchExcluded();
+      toast.success(`Address ${exclude ? 'excluded from' : 'included in'} tax!`);
+    } catch (error: any) {
+      console.error('Error toggling tax exclusion:', error);
+      toast.error(error?.message || 'Failed to update tax exclusion');
+    }
+  };
+
+  // Check if address is excluded
+  const handleCheckExclusion = () => {
+    if (!checkExcludeAddress || !checkExcludeAddress.startsWith('0x')) {
+      toast.error('Please enter a valid address');
+      return;
+    }
+    refetchExcluded();
+  };
+
+  // Add new pool
+  const handleAddPool = async () => {
+    if (!ensureReady()) return;
+
+    try {
+      if (!newPoolLpToken || !newPoolLpToken.startsWith('0x')) {
+        toast.error('Invalid LP token address');
+        return;
+      }
+
+      const allocPoint = parseInt(newPoolAllocPoint);
+      if (isNaN(allocPoint) || allocPoint <= 0) {
+        toast.error('Allocation points must be positive');
+        return;
+      }
+
+      toast.info('Adding new pool...');
+
+      const hash = await writeContractAsync({
+        address: ADDRESSES.MASTERCHEF,
+        abi: MASTERCHEF_ABI,
+        functionName: 'add',
+        args: [BigInt(allocPoint), newPoolLpToken as `0x${string}`, true],
+      });
+
+      setPendingTx(hash);
+      toast.success('Transaction submitted!');
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      refetchTotalAllocPoint();
+      toast.success(`Pool added with ${allocPoint} allocation points!`);
+      setNewPoolLpToken('');
+      setNewPoolAllocPoint('');
+    } catch (error: any) {
+      console.error('Error adding pool:', error);
+      toast.error(error?.message || 'Failed to add pool');
+    }
+  };
+
+  // Update pool allocation
+  const handleUpdatePool = async () => {
+    if (!ensureReady()) return;
+
+    try {
+      const pid = parseInt(updatePoolId);
+      const allocPoint = parseInt(updatePoolAllocPoint);
+
+      if (isNaN(pid) || pid < 0) {
+        toast.error('Invalid pool ID');
+        return;
+      }
+
+      if (isNaN(allocPoint) || allocPoint < 0) {
+        toast.error('Allocation points must be non-negative');
+        return;
+      }
+
+      toast.info('Updating pool allocation...');
+
+      const hash = await writeContractAsync({
+        address: ADDRESSES.MASTERCHEF,
+        abi: MASTERCHEF_ABI,
+        functionName: 'set',
+        args: [BigInt(pid), BigInt(allocPoint), true],
+      });
+
+      setPendingTx(hash);
+      toast.success('Transaction submitted!');
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      refetchTotalAllocPoint();
+      toast.success(`Pool ${pid} updated to ${allocPoint} points!`);
+      setUpdatePoolId('');
+      setUpdatePoolAllocPoint('');
+    } catch (error: any) {
+      console.error('Error updating pool:', error);
+      toast.error(error?.message || 'Failed to update pool');
     }
   };
 
@@ -319,6 +623,38 @@ export function Admin() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {/* Pending Tax Change Warning */}
+              {Boolean(hasPendingTaxChange) && (
+                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+                  <p className="text-sm font-medium text-yellow-400 mb-2">⏳ Pending Tax Change</p>
+                  <div className="text-xs text-yellow-300 space-y-1">
+                    <p>• Buy Tax: {pendingBuyTaxBps ? (Number(pendingBuyTaxBps) / 100).toFixed(1) : '--'}%</p>
+                    <p>• Sell Tax: {pendingSellTaxBps ? (Number(pendingSellTaxBps) / 100).toFixed(1) : '--'}%</p>
+                    <p>• Execute After: {taxChangeTimestamp ? new Date(Number(taxChangeTimestamp) * 1000).toLocaleString() : '--'}</p>
+                    <p>• Time Remaining: {taxChangeTimestamp ? Math.max(0, Math.floor((Number(taxChangeTimestamp) - Date.now() / 1000) / 3600)) : '--'} hours</p>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      onClick={handleExecuteTaxChange}
+                      disabled={isTxLoading || Boolean(taxChangeTimestamp && Date.now() / 1000 < Number(taxChangeTimestamp))}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      {isTxLoading ? 'Executing...' : 'Execute Now'}
+                    </Button>
+                    <Button
+                      onClick={handleCancelTaxChange}
+                      disabled={isTxLoading}
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      {isTxLoading ? 'Cancelling...' : 'Cancel'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Buy Tax (%)
@@ -356,12 +692,17 @@ export function Admin() {
               </div>
 
               <Button
-                onClick={handleUpdateTaxRates}
-                disabled={isTxLoading}
+                onClick={handleScheduleTaxChange}
+                disabled={isTxLoading || Boolean(hasPendingTaxChange)}
                 className="w-full"
               >
-                {isTxLoading ? 'Updating...' : 'Update Tax Rates'}
+                {isTxLoading ? 'Scheduling...' : Boolean(hasPendingTaxChange) ? 'Tax Change Pending' : 'Schedule Tax Change (24hr)'}
               </Button>
+
+              <div className="text-xs text-muted-foreground p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
+                <p className="font-medium text-blue-400 mb-1">🔒 24-Hour Timelock</p>
+                <p className="text-blue-300">Tax changes require 24 hours before execution. This protects users from sudden tax increases.</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -458,6 +799,301 @@ export function Admin() {
           </CardContent>
         </Card>
 
+        {/* Farming Rewards */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#00C48C]" />
+              Farming Rewards (MasterChef)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground">Current Emission</p>
+                  <p className="text-lg font-bold">
+                    {rewardPerBlock ? formatUnits(rewardPerBlock as bigint, 18) : '--'} PNB/block
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ~{rewardPerBlock ? (Number(formatUnits(rewardPerBlock as bigint, 18)) * 28800).toLocaleString() : '--'} PNB/day
+                  </p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground">Active Pools</p>
+                  <p className="text-lg font-bold">
+                    {poolLength !== undefined && poolLength !== null ? poolLength.toString() : '--'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Farm pools
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  New Emission Rate (PNB per block)
+                </label>
+                <Input
+                  type="number"
+                  value={newEmissionRate}
+                  onChange={(e) => setNewEmissionRate(e.target.value)}
+                  placeholder="10"
+                  min="0"
+                  step="1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  BSC: ~3 sec/block, 28,800 blocks/day
+                </p>
+              </div>
+
+              <Button
+                onClick={handleUpdateEmissionRate}
+                disabled={isTxLoading}
+                className="w-full"
+              >
+                {isTxLoading ? 'Updating...' : 'Update Emission Rate'}
+              </Button>
+
+              <div className="text-xs text-muted-foreground p-3 bg-purple-500/10 border border-purple-500/20 rounded-md">
+                <p className="font-medium text-purple-400 mb-1">📊 How it works</p>
+                <p className="text-purple-300">
+                  • Rewards are calculated per block automatically by smart contract<br />
+                  • Your share = (Your staked LP / Total staked LP) × emission rate<br />
+                  • More stakers = rewards split more ways = lower APR<br />
+                  • Tokens only sent when users claim (harvest)
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pool Management */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5 text-[#00C48C]" />
+              Pool Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Current Pools Info */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground">Total Pools</p>
+                  <p className="text-lg font-bold">
+                    {poolLength !== undefined && poolLength !== null ? poolLength.toString() : '--'}
+                  </p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground">Total Allocation</p>
+                  <p className="text-lg font-bold">
+                    {totalAllocPoint !== undefined && totalAllocPoint !== null ? totalAllocPoint.toString() : '--'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">points</p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground">Emission Rate</p>
+                  <p className="text-lg font-bold">
+                    {rewardPerBlock ? formatUnits(rewardPerBlock as bigint, 18) : '--'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">PNB/block</p>
+                </div>
+              </div>
+
+              <div className="border-t border-border" />
+
+              {/* Add New Pool */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Add New Pool</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      LP Token Address
+                    </label>
+                    <Input
+                      type="text"
+                      value={newPoolLpToken}
+                      onChange={(e) => setNewPoolLpToken(e.target.value)}
+                      placeholder="0x... (LP pair or PNB token for single staking)"
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use {ADDRESSES.PANBOO_TOKEN} for PNB single-stake pool
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      Allocation Points
+                    </label>
+                    <Input
+                      type="number"
+                      value={newPoolAllocPoint}
+                      onChange={(e) => setNewPoolAllocPoint(e.target.value)}
+                      placeholder="1000"
+                      min="1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Higher = more rewards. Example: 1000 points = {totalAllocPoint ? ((1000 / (Number(totalAllocPoint) + 1000)) * 100).toFixed(1) : '--'}% of emissions
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleAddPool}
+                    disabled={isTxLoading || !newPoolLpToken || !newPoolAllocPoint}
+                    className="w-full"
+                  >
+                    {isTxLoading ? 'Adding...' : 'Add Pool'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-t border-border" />
+
+              {/* Update Pool Allocation */}
+              <div>
+                <h3 className="text-sm font-medium mb-3">Update Pool Weight</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      Pool ID
+                    </label>
+                    <Input
+                      type="number"
+                      value={updatePoolId}
+                      onChange={(e) => setUpdatePoolId(e.target.value)}
+                      placeholder="0 (first pool), 1 (second pool), etc."
+                      min="0"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pool 0 = PNB/BNB LP (created during deployment)
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      New Allocation Points
+                    </label>
+                    <Input
+                      type="number"
+                      value={updatePoolAllocPoint}
+                      onChange={(e) => setUpdatePoolAllocPoint(e.target.value)}
+                      placeholder="500"
+                      min="0"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Set to 0 to effectively disable the pool
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleUpdatePool}
+                    disabled={isTxLoading || updatePoolId === '' || updatePoolAllocPoint === ''}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    {isTxLoading ? 'Updating...' : 'Update Pool'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground p-3 bg-purple-500/10 border border-purple-500/20 rounded-md">
+                <p className="font-medium text-purple-400 mb-1">💡 Pool Weight Examples</p>
+                <div className="text-purple-300 space-y-1">
+                  <p>• Pool 0: 2000 pts, Pool 1: 1000 pts → 66% / 33% split</p>
+                  <p>• Pool 0: 1000 pts, Pool 1: 1000 pts → 50% / 50% split</p>
+                  <p>• Single PNB staking: Use PNB token address as LP token</p>
+                  <p>• LP pools earn more, single-stake pools earn less (lower risk)</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tax Exclusion Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-[#00C48C]" />
+              Tax Exclusion Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Check Address Exclusion */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Check if Address is Excluded
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={checkExcludeAddress}
+                    onChange={(e) => setCheckExcludeAddress(e.target.value)}
+                    placeholder="0x..."
+                    className="font-mono text-sm flex-1"
+                  />
+                  <Button
+                    onClick={handleCheckExclusion}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Check
+                  </Button>
+                </div>
+                {checkExcludeAddress && checkExcludeAddress.startsWith('0x') && isExcluded !== undefined && (
+                  <div className={`mt-2 p-2 rounded-md text-sm ${isExcluded ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                    {isExcluded ? '✅ Excluded from tax' : '❌ Not excluded (pays tax)'}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border my-4" />
+
+              {/* Manage Tax Exclusion */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Exclude/Include Address from Tax
+                </label>
+                <Input
+                  type="text"
+                  value={excludeAddress}
+                  onChange={(e) => setExcludeAddress(e.target.value)}
+                  placeholder="0x... (MasterChef, P2E contracts, etc.)"
+                  className="font-mono text-sm mb-2"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleToggleTaxExclusion(excludeAddress, true)}
+                    disabled={isTxLoading || !excludeAddress}
+                    className="flex-1"
+                    variant="default"
+                  >
+                    {isTxLoading ? 'Processing...' : 'Exclude'}
+                  </Button>
+                  <Button
+                    onClick={() => handleToggleTaxExclusion(excludeAddress, false)}
+                    disabled={isTxLoading || !excludeAddress}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    {isTxLoading ? 'Processing...' : 'Include'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
+                <p className="font-medium text-blue-400 mb-1">ℹ️ Common Exclusions</p>
+                <div className="text-blue-300 space-y-1">
+                  <p>• <span className="font-mono text-xs">{ADDRESSES.PANBOO_TOKEN}</span> - Token Contract ✅</p>
+                  <p>• <span className="font-mono text-xs">{formatAddress(charityWallet as string || '')}</span> - Charity Wallet ✅</p>
+                  <p>• <span className="font-mono text-xs">{ADDRESSES.MASTERCHEF}</span> - MasterChef ✅</p>
+                  <p>• Owner Wallet ✅</p>
+                  <p className="mt-2 text-xs">You may want to exclude: P2E contracts, lock contracts, vesting wallets</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Manual Actions */}
         <Card>
           <CardHeader>
@@ -480,6 +1116,27 @@ export function Admin() {
                   variant="outline"
                 >
                   {isTxLoading ? 'Processing...' : 'Swap & Donate Now'}
+                </Button>
+              </div>
+
+              <div className="p-4 bg-muted rounded-md border-2 border-red-500/20">
+                <p className="text-sm font-medium mb-1 text-red-400">🚨 Trading Circuit Breaker</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Emergency stop for all trading, taxes, and auto-swaps. Use only if something unusual happens.
+                </p>
+                <div className="mb-3 p-2 bg-background rounded-md">
+                  <p className="text-xs text-muted-foreground">Current Status:</p>
+                  <p className={`text-sm font-bold ${Boolean(tradingEnabled) ? 'text-green-400' : 'text-red-400'}`}>
+                    {Boolean(tradingEnabled) ? '✅ Trading Enabled' : '🛑 Trading Disabled'}
+                  </p>
+                </div>
+                <Button
+                  onClick={handleToggleTrading}
+                  disabled={isTxLoading}
+                  className="w-full"
+                  variant={Boolean(tradingEnabled) ? 'destructive' : 'default'}
+                >
+                  {isTxLoading ? 'Processing...' : Boolean(tradingEnabled) ? '🛑 Disable Trading' : '✅ Enable Trading'}
                 </Button>
               </div>
 

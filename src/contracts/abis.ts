@@ -34,31 +34,41 @@ export const ROUTER_ABI = [
 // MasterChef ABI
 export const MASTERCHEF_ABI = [
   // View functions
+  'function owner() view returns (address)',
   'function poolLength() view returns (uint256)',
-  'function poolInfo(uint256 pid) view returns (address lpToken, uint256 allocPoint, uint256 lastRewardBlock, uint256 accRewardPerShare)',
-  'function userInfo(uint256 pid, address user) view returns (uint256 amount, uint256 rewardDebt)',
-  'function pending Reward(uint256 pid, address user) view returns (uint256)',
+  'function poolInfo(uint256 pid) view returns (address lpToken, uint256 allocPoint, uint256 lastRewardBlock, uint256 accRewardPerShare, uint256 totalStaked)',
+  'function userInfo(uint256 pid, address user) view returns (uint256 amount, uint256 rewardDebt, uint256 pendingRewards)',
+  'function pendingReward(uint256 pid, address user) view returns (uint256)',
   'function rewardPerBlock() view returns (uint256)',
   'function totalAllocPoint() view returns (uint256)',
   'function startBlock() view returns (uint256)',
+  'function MAX_POOLS() view returns (uint256)',
+  'function MAX_REWARD_PER_BLOCK() view returns (uint256)',
+  'function minStakeAmount() view returns (uint256)',
 
   // State-changing functions
   'function deposit(uint256 pid, uint256 amount)',
   'function withdraw(uint256 pid, uint256 amount)',
+  'function harvest(uint256 pid)',
   'function emergencyWithdraw(uint256 pid)',
 
   // Owner functions
   'function add(uint256 allocPoint, address lpToken, bool withUpdate)',
   'function set(uint256 pid, uint256 allocPoint, bool withUpdate)',
   'function updateEmissionRate(uint256 _rewardPerBlock)',
+  'function setMinStakeAmount(uint256 _minStakeAmount)',
+  'function recoverToken(address token, uint256 amount)',
 
   // Events
   'event Deposit(address indexed user, uint256 indexed pid, uint256 amount)',
   'event Withdraw(address indexed user, uint256 indexed pid, uint256 amount)',
   'event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount)',
-  'event Harvest(address indexed user, uint256 indexed pid, uint256 amount)',
+  'event Harvest(address indexed user, uint256 indexed pid, uint256 amount, uint256 carry)',
   'event PoolAdded(uint256 indexed pid, address indexed lpToken, uint256 allocPoint)',
-  'event EmissionRateUpdated(uint256 oldRate, uint256 newRate)',
+  'event PoolUpdated(uint256 indexed pid, uint256 allocPoint)',
+  'event EmissionRateUpdated(address indexed caller, uint256 previousRate, uint256 newRate)',
+  'event TokenRecovered(address indexed token, uint256 amount)',
+  'event MinStakeAmountUpdated(uint256 newAmount)',
 ] as const;
 
 // Panboo Token ABI (BEP-20 with tax features)
@@ -78,13 +88,44 @@ export const PANBOO_TOKEN_ABI = [
   'function pancakePair() view returns (address)',
   'function isExcludedFromTax(address account) view returns (bool)',
 
-  // Admin functions
-  'function setTaxRates(uint256 newBuyTax, uint256 newSellTax)',
+  // Tax timelock view functions
+  'function hasPendingTaxChange() view returns (bool)',
+  'function pendingBuyTaxBps() view returns (uint256)',
+  'function pendingSellTaxBps() view returns (uint256)',
+  'function taxChangeTimestamp() view returns (uint256)',
+  'function TAX_CHANGE_DELAY() view returns (uint256)',
+
+  // Multi-AMM pair support
+  'function isAMMPair(address pair) view returns (bool)',
+  'function setAMMPair(address pair, bool value)',
+
+  // MEV protection
+  'function maxSwapBps() view returns (uint256)',
+  'function calculateMaxSwapAmount() view returns (uint256)',
+  'function setMaxSwapBps(uint256 newMaxSwapBps)',
+
+  // Anti-dust & rate limiting
+  'function minDonationBNB() view returns (uint256)',
+  'function lastAutoSwapBlock() view returns (uint256)',
+  'function setMinDonationBNB(uint256 newMin)',
+
+  // Trading circuit breaker
+  'function tradingEnabled() view returns (bool)',
+  'function setTradingEnabled(bool enabled)',
+
+  // Admin functions - Tax management (with timelock)
+  'function scheduleTaxRateChange(uint256 newBuyTax, uint256 newSellTax)',
+  'function executeTaxRateChange()',
+  'function cancelTaxRateChange()',
+
+  // Admin functions - Other
   'function setSwapThreshold(uint256 newThreshold)',
   'function setSwapEnabled(bool enabled)',
   'function setCharityWallet(address newWallet)',
   'function setExcludedFromTax(address account, bool excluded)',
   'function manualSwapAndDonate()',
+  'function setPrimaryPair(address pair)',
+  'function setRouter(address newRouter)',
 
   // Events
   'event Donated(uint256 tokensSold, uint256 bnbSent, address indexed to, uint256 timestamp)',
@@ -93,6 +134,15 @@ export const PANBOO_TOKEN_ABI = [
   'event SwapEnabledUpdated(bool enabled)',
   'event CharityWalletUpdated(address indexed newWallet)',
   'event TaxRatesUpdated(uint256 buyTax, uint256 sellTax)',
+  'event TaxChangeScheduled(uint256 newBuyTax, uint256 newSellTax, uint256 executeAfter)',
+  'event TaxChangeCancelled()',
+  'event AMMPairUpdated(address indexed pair, bool value)',
+  'event MaxSwapBpsUpdated(uint256 newMaxSwapBps)',
+  'event MinDonationUpdated(uint256 newMinDonation)',
+  'event DonationSkipped(uint256 bnbAmount, uint256 minRequired)',
+  'event RouterUpdated(address indexed newRouter)',
+  'event PrimaryPairUpdated(address indexed newPair)',
+  'event TradingEnabledSet(bool enabled)',
 ] as const;
 
 // Multicall3 ABI

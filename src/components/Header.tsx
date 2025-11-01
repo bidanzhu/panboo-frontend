@@ -33,7 +33,7 @@ export function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00C48C] to-green-600" />
+            <img src="/panboo.png" alt="Panboo" className="w-10 h-10" />
             <span className="font-bold text-xl">Panboo</span>
           </Link>
 
