@@ -1,0 +1,22 @@
+{
+  "network": "bscTestnet",
+  "chainId": "97",
+  "deployer": "0xb008e4eE98fF8991fDc079537157eF7ACF2FE614",
+  "timestamp": "2025-11-02T06:05:54.240Z",
+  "contracts": {
+    "PanbooToken": {
+      "address": "0x4D62931968fd185423cBf4eA029Be4D48C35312E",
+      "charityWallet": "0xb008d3c90e2f6dd63d4a0bd3ad6f6389f333cd1d",
+      "pancakePair": "0x89D27Bc3Fb398055F6bDefdd66B259BE60BCa2b2"
+    },
+    "MasterChef": {
+      "address": "0xD9B2B2288E14D7bE024012289e149a8B9Cf9CfDD",
+      "rewardPerBlock": "100.0",
+      "startBlock": 70955703
+    }
+  },
+  "config": {
+    "totalSupply": "10000000000.0",
+    "rewardPool": "2500000000.0"
+  }
+}

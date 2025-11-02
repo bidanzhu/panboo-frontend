@@ -35,24 +35,20 @@ export interface Pool {
 }
 
 export interface UserFarm {
-  wallet: string;
-  pid: number;
+  poolId: number;
   stakedAmount: string;
-  pendingReward: string;
-  updatedAt: number;
+  pendingRewards: string;
+  lpSymbol: string;
 }
 
-export type LiveFeedType = 'buy' | 'sell' | 'donation' | 'harvest';
+export type LiveFeedType = 'buy' | 'sell' | 'donation' | 'harvest' | 'swap' | 'stake';
 
 export interface LiveFeedItem {
   id: string;
   type: LiveFeedType;
-  wallet: string;
-  amountPanboo?: string;
-  amountBnb?: string;
-  pid?: number;
   txHash: string;
   timestamp: number;
+  data: any; // Flexible data structure depending on feed type
 }
 
 export interface FarmsSummary {
@@ -63,8 +59,9 @@ export interface FarmsSummary {
 
 export interface DailyDonation {
   date: string;
-  donationsBnb: string;
-  donationsUsd: string;
+  totalBnb: string;
+  totalUsd: string;
+  txCount: number;
 }
 
 // API Error Response

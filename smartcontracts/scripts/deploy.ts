@@ -14,7 +14,16 @@ async function main() {
   const TOKEN_SYMBOL = "PNB";
   const TOTAL_SUPPLY = ethers.parseUnits("10000000000", 18); // 10 billion tokens
   const CHARITY_WALLET = process.env.CHARITY_WALLET || deployer.address;
-  const PANCAKE_ROUTER = "0x10ED43C718714eb63d5aA57B78B54704E256024E"; // BSC Mainnet (use 0xD99D1c33F9fC3444f8101754aBC46c52416550D1 for testnet)
+
+  // Network-specific router
+  const network = await ethers.provider.getNetwork();
+  const PANCAKE_ROUTER = network.chainId === 56n
+    ? "0x10ED43C718714eb63d5aA57B78B54704E256024E" // BSC Mainnet
+    : "0xD99D1c33F9fC3444f8101754aBC46c52416550D1"; // BSC Testnet
+
+  const PANCAKE_FACTORY = network.chainId === 56n
+    ? "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73" // BSC Mainnet
+    : "0x6725F303b657a9451d8BA641348b6761A6CC7a17"; // BSC Testnet
 
   // Reward emission: 100 PNB per block (~3 seconds) - Bootstrap phase
   // This gives ~53% APR with moderate TVL. Adjust via admin panel as needed.

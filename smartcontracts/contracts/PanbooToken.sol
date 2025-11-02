@@ -130,10 +130,14 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
 
         // Create PancakeSwap pair
         address wbnb = IPancakeRouter02(_pancakeRouter).WETH();
-        pancakePair = IPancakeFactory(
-            // PancakeSwap Factory address on BSC
-            0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73
-        ).createPair(address(this), wbnb);
+        // Get factory from router to support both mainnet and testnet
+        address factory;
+        if (block.chainid == 56) {
+            factory = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // BSC Mainnet
+        } else {
+            factory = 0x6725F303b657a9451d8BA641348b6761A6CC7a17; // BSC Testnet
+        }
+        pancakePair = IPancakeFactory(factory).createPair(address(this), wbnb);
 
         // Mark primary pair as AMM pair
         isAMMPair[pancakePair] = true;
