@@ -21,14 +21,14 @@ export function Farms() {
     <div className="container mx-auto px-4 py-8">
       {/* Warning Banner */}
       {writesDisabled && (
-        <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+        <div className="mb-6 p-4 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-xl backdrop-blur-sm">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm text-yellow-400 font-medium">
+              <p className="text-sm text-yellow-300 font-semibold">
                 Farm operations are currently disabled
               </p>
-              <p className="text-xs text-yellow-300 mt-1">
+              <p className="text-xs text-yellow-200/80 mt-1">
                 {isWrongChain
                   ? 'Please switch to BSC network to interact with farms'
                   : 'Real contract addresses required. Smart contracts will be deployed soon.'}
@@ -39,15 +39,17 @@ export function Farms() {
       )}
 
       {/* Header */}
-      <Card className="mb-8">
+      <Card className="mb-8 bg-gradient-to-br from-[#00C48C]/5 to-[#00C48C]/10 border-[#00C48C]/20">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Sprout className="w-6 h-6 text-[#00C48C]" />
-                Farms
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 bg-[#00C48C]/20 rounded-lg">
+                  <Sprout className="w-6 h-6 text-[#00C48C]" />
+                </div>
+                <span className="text-2xl">Farms</span>
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-muted-foreground mt-3 ml-14">
                 Stake LP tokens to earn PANBOO rewards
               </p>
             </div>
@@ -56,6 +58,7 @@ export function Farms() {
               <Button
                 onClick={() => harvestAll(pools.map(p => p.pid))}
                 disabled={actionState.step !== 'idle' || writesDisabled}
+                className="bg-[#00C48C] hover:bg-[#00C48C]/90 text-white font-semibold px-6"
               >
                 {actionState.step === 'harvesting' ? 'Harvesting...' : 'Harvest All'}
               </Button>
@@ -81,35 +84,47 @@ export function Farms() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-4">Pool</th>
-                    <th className="text-right p-4">TVL</th>
-                    <th className="text-right p-4">APR</th>
-                    <th className="text-right p-4">Your Stake</th>
-                    <th className="text-right p-4">Actions</th>
+                  <tr className="border-b border-border/50">
+                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Pool</th>
+                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">TVL</th>
+                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">APR</th>
+                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Your Stake</th>
+                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pools.map((pool) => (
-                    <tr key={pool.pid} className="border-b last:border-0 hover:bg-muted/50">
+                    <tr key={pool.pid} className="border-b border-border/50 last:border-0 hover:bg-[#00C48C]/5 transition-colors">
                       <td className="p-4">
-                        <div className="font-medium">{pool.name}</div>
-                      </td>
-                      <td className="text-right p-4">
-                        {formatUSD(parseFloat(pool.tvlUsd))}
-                      </td>
-                      <td className="text-right p-4">
-                        <div className="flex items-center justify-end gap-1 text-[#00C48C]">
-                          <TrendingUp className="w-4 h-4" />
-                          {pool.aprPct}%
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-[#00C48C]/10 rounded-lg">
+                            <Sprout className="w-5 h-5 text-[#00C48C]" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-base">{pool.name}</div>
+                            <div className="text-xs text-muted-foreground">Pool #{pool.pid}</div>
+                          </div>
                         </div>
                       </td>
-                      <td className="text-right p-4 text-muted-foreground">
+                      <td className="text-right p-4">
+                        <div className="font-semibold text-base">{formatUSD(parseFloat(pool.tvlUsd))}</div>
+                      </td>
+                      <td className="text-right p-4">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00C48C]/10 rounded-lg">
+                          <TrendingUp className="w-4 h-4 text-[#00C48C]" />
+                          <span className="font-bold text-[#00C48C]">{pool.aprPct}%</span>
+                        </div>
+                      </td>
+                      <td className="text-right p-4 text-muted-foreground font-medium">
                         --
                       </td>
                       <td className="text-right p-4">
                         <div className="flex items-center justify-end gap-2">
-                          <Button size="sm" disabled={writesDisabled}>
+                          <Button
+                            size="sm"
+                            disabled={writesDisabled}
+                            className="bg-[#00C48C] hover:bg-[#00C48C]/90 text-white font-semibold"
+                          >
                             Stake
                           </Button>
                         </div>

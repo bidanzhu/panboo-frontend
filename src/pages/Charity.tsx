@@ -31,39 +31,39 @@ export function Charity() {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
+        <Card className="gradient-card hover:border-[#00C48C]/30 transition-all group">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground mb-2">Total Donated (BNB)</p>
+            <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Total Donated (BNB)</p>
             {isSummaryLoading ? (
               <Skeleton className="h-8 w-24" />
             ) : (
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold group-hover:text-[#00C48C] transition-colors">
                 {summary ? formatBNB(summary.totalDonatedBnb) : '--'}
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="gradient-card-accent border-glow hover:border-[#00C48C]/40 transition-all group">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground mb-2">Total Donated (USD)</p>
+            <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Total Donated (USD)</p>
             {isSummaryLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
-              <p className="text-2xl font-bold text-[#00C48C]">
+              <p className="text-2xl font-bold text-[#00C48C] glow-green-sm">
                 {summary ? formatUSD(parseFloat(summary.totalDonatedUsd)) : '--'}
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="gradient-card hover:border-[#00C48C]/30 transition-all group">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground mb-2">Total Donations</p>
+            <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Total Donations</p>
             {isSummaryLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold group-hover:text-[#00C48C] transition-colors">
                 {summary ? summary.txCount : '--'}
               </p>
             )}
@@ -72,18 +72,21 @@ export function Charity() {
       </div>
 
       {/* Charity Wallet */}
-      <Card className="mb-8">
+      <Card className="mb-8 gradient-card-accent border-glow">
         <CardHeader>
-          <CardTitle>Charity Wallet</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-[#00C48C]" />
+            Charity Wallet
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-            <div className="flex-1 font-mono text-sm bg-muted p-3 rounded-md break-all">
+            <div className="flex-1 font-mono text-sm bg-[#00C48C]/5 border border-[#00C48C]/20 p-3 rounded-md break-all">
               {ADDRESSES.CHARITY_WALLET}
             </div>
 
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={handleCopyAddress}>
+              <Button size="sm" variant="outline" onClick={handleCopyAddress} className="border-[#00C48C]/30 hover:border-[#00C48C]/60 hover:bg-[#00C48C]/10">
                 <Copy className="w-4 h-4 mr-2" />
                 Copy
               </Button>
@@ -93,7 +96,7 @@ export function Charity() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="border-[#00C48C]/30 hover:border-[#00C48C]/60 hover:bg-[#00C48C]/10">
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View on BscScan
                 </Button>
@@ -104,7 +107,7 @@ export function Charity() {
       </Card>
 
       {/* Recent Donations */}
-      <Card>
+      <Card className="gradient-card">
         <CardHeader>
           <CardTitle>Recent Donations</CardTitle>
         </CardHeader>
@@ -133,7 +136,7 @@ export function Charity() {
                   {donations.map((donation) => (
                     <tr
                       key={donation.txHash}
-                      className="border-b last:border-0 hover:bg-yellow-500/5"
+                      className="border-b border-border/50 last:border-0 hover:bg-[#00C48C]/5 transition-colors"
                     >
                       <td className="p-4">
                         <a
@@ -145,7 +148,7 @@ export function Charity() {
                           {formatAddress(donation.wallet)}
                         </a>
                       </td>
-                      <td className="text-right p-4 font-medium text-yellow-500">
+                      <td className="text-right p-4 font-semibold text-[#00C48C]">
                         {donation.amountBnb ? formatBNB(donation.amountBnb) : '--'}
                       </td>
                       <td className="text-right p-4 text-sm text-muted-foreground">

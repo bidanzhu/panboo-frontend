@@ -1,0 +1,40 @@
+services:
+  # Backend API + Blockchain Listener
+  - type: web
+    name: panboo-backend
+    runtime: node
+    plan: free  # or 'starter' for $7/month with persistent disk
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.20.2
+      - key: RPC_URL
+        value: https://bsc-dataseed.binance.org
+      - key: CHAIN_ID
+        value: 56
+      - key: TOKEN_ADDRESS
+        value: 0x0000000000000000000000000000000000000000
+      - key: MASTERCHEF_ADDRESS
+        value: 0x0000000000000000000000000000000000000000
+      - key: CHARITY_WALLET
+        value: 0xb008e4eE98fF8991fDc079537157eF7ACF2FE614
+      - key: PANBOO_BNB_PAIR
+        value: 0x0000000000000000000000000000000000000000
+      - key: DB_PATH
+        value: /var/data/panboo.db
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: POLL_INTERVAL
+        value: 12000
+      - key: START_BLOCK
+        value: 0
+      - key: LOG_LEVEL
+        value: info
+    # Uncomment if using paid plan with persistent disk
+    # disk:
+    #   name: panboo-data
+    #   mountPath: /var/data
+    #   sizeGB: 1

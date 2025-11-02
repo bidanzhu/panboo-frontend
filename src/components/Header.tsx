@@ -1,5 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { WalletConnectButton } from './WalletConnectButton';
+import { ThemeToggle } from './ThemeToggle';
+import { useTheme } from './ThemeProvider';
 import { cn } from '@/lib/utils';
 import { useAccount, useReadContract } from 'wagmi';
 import { ADDRESSES } from '@/contracts/addresses';
@@ -9,6 +11,7 @@ import { Shield } from 'lucide-react';
 export function Header() {
   const location = useLocation();
   const { address, isConnected } = useAccount();
+  const { theme } = useTheme();
 
   // Read contract owner
   const { data: contractOwner } = useReadContract({
@@ -17,9 +20,15 @@ export function Header() {
     functionName: 'owner',
   });
 
-  // Check if user is owner
-  const isOwner = isConnected && address && contractOwner &&
-    address.toLowerCase() === (contractOwner as string).toLowerCase();
+  // Check if user is owner (or development mode)
+  const isDevelopmentMode = ADDRESSES.PANBOO_TOKEN === '0x0000000000000000000000000000000000000000';
+  const isOwner = isConnected && address && (
+    (contractOwner && address.toLowerCase() === (contractOwner as string).toLowerCase()) ||
+    isDevelopmentMode
+  );
+
+  // Logo based on theme
+  const logo = theme === 'dark' ? '/156x40_light.svg' : '/156x40.svg';
 
   const navItems = [
     { path: '/', label: 'Home' },
@@ -32,9 +41,8 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center space-x-2">
-            <img src="/panboo.png" alt="Panboo" className="w-10 h-10" />
-            <span className="font-bold text-xl">Panboo</span>
+          <Link to="/" className="flex items-center">
+            <img src={logo} alt="Panboo" className="h-8" />
           </Link>
 
           <nav className="hidden md:flex items-center space-x-6">
@@ -80,7 +88,10 @@ export function Header() {
           </nav>
         </div>
 
-        <WalletConnectButton />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <WalletConnectButton />
+        </div>
       </div>
     </header>
   );

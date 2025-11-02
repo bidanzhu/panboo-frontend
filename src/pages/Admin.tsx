@@ -157,8 +157,12 @@ export function Admin() {
   });
 
   // Check if user is owner
-  const isOwner = isConnected && address && contractOwner &&
-    address.toLowerCase() === (contractOwner as string).toLowerCase();
+  // In development mode (using placeholder addresses), allow access for preview
+  const isDevelopmentMode = ADDRESSES.PANBOO_TOKEN === '0x0000000000000000000000000000000000000000';
+  const isOwner = isConnected && address && (
+    (contractOwner && address.toLowerCase() === (contractOwner as string).toLowerCase()) ||
+    isDevelopmentMode
+  );
 
   // Schedule tax rate change (24hr timelock)
   const handleScheduleTaxChange = async () => {
@@ -545,9 +549,9 @@ export function Admin() {
   if (!isConnected) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Card>
+        <Card className="gradient-card">
           <CardContent className="pt-6 text-center py-12">
-            <Shield className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <Shield className="w-16 h-16 mx-auto text-[#00C48C] mb-4" />
             <h2 className="text-2xl font-bold mb-2">Admin Panel</h2>
             <p className="text-muted-foreground">
               Please connect your wallet to access the admin panel
@@ -562,7 +566,7 @@ export function Admin() {
   if (!isOwner) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Card>
+        <Card className="gradient-card border-red-500/20">
           <CardContent className="pt-6">
             <div className="text-center py-12">
               <AlertCircle className="w-16 h-16 mx-auto text-red-500 mb-4" />
@@ -570,7 +574,7 @@ export function Admin() {
               <p className="text-muted-foreground mb-4">
                 Only the contract owner can access this panel
               </p>
-              <div className="bg-muted p-4 rounded-md inline-block">
+              <div className="bg-[#00C48C]/5 border border-[#00C48C]/20 p-4 rounded-md inline-block">
                 <p className="text-sm text-muted-foreground mb-1">Your wallet:</p>
                 <p className="font-mono text-sm">{formatAddress(address || '')}</p>
                 <p className="text-sm text-muted-foreground mt-3 mb-1">Contract owner:</p>
@@ -597,24 +601,43 @@ export function Admin() {
         </p>
       </div>
 
-      {/* Warning Banner */}
-      <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-yellow-400 font-medium">
-              Owner Access Granted
-            </p>
-            <p className="text-xs text-yellow-300 mt-1">
-              All changes require wallet signature and on-chain transaction. Changes are permanent.
-            </p>
+      {/* Development Mode Banner */}
+      {isDevelopmentMode && (
+        <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-purple-400 font-medium">
+                🔧 Development Mode - Preview Only
+              </p>
+              <p className="text-xs text-purple-300 mt-1">
+                Contracts not deployed yet. Deploy contracts and update .env to enable actual admin functions.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Warning Banner */}
+      {!isDevelopmentMode && (
+        <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-yellow-400 font-medium">
+                Owner Access Granted
+              </p>
+              <p className="text-xs text-yellow-300 mt-1">
+                All changes require wallet signature and on-chain transaction. Changes are permanent.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tax Rates */}
-        <Card>
+        <Card className="gradient-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-[#00C48C]" />
@@ -708,7 +731,7 @@ export function Admin() {
         </Card>
 
         {/* Charity Wallet */}
-        <Card>
+        <Card className="gradient-card-accent border-glow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Heart className="w-5 h-5 text-[#00C48C]" />
@@ -745,7 +768,7 @@ export function Admin() {
         </Card>
 
         {/* Swap Settings */}
-        <Card>
+        <Card className="gradient-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="w-5 h-5 text-[#00C48C]" />
@@ -800,7 +823,7 @@ export function Admin() {
         </Card>
 
         {/* Farming Rewards */}
-        <Card>
+        <Card className="gradient-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-[#00C48C]" />
@@ -869,7 +892,7 @@ export function Admin() {
         </Card>
 
         {/* Pool Management */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 gradient-card-accent border-glow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="w-5 h-5 text-[#00C48C]" />
@@ -1009,7 +1032,7 @@ export function Admin() {
         </Card>
 
         {/* Tax Exclusion Management */}
-        <Card>
+        <Card className="gradient-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-[#00C48C]" />
@@ -1095,7 +1118,7 @@ export function Admin() {
         </Card>
 
         {/* Manual Actions */}
-        <Card>
+        <Card className="gradient-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-[#00C48C]" />

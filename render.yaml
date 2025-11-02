@@ -1,4 +1,43 @@
 services:
+  # Backend API + Blockchain Listener
+  - type: web
+    name: panboo-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "18"
+      - key: RPC_URL
+        value: https://bsc-dataseed.binance.org
+      - key: CHAIN_ID
+        value: "56"
+      - key: TOKEN_ADDRESS
+        sync: false
+      - key: MASTERCHEF_ADDRESS
+        sync: false
+      - key: CHARITY_WALLET
+        value: 0xb008e4eE98fF8991fDc079537157eF7ACF2FE614
+      - key: PANBOO_BNB_PAIR
+        sync: false
+      - key: TURSO_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: PORT
+        value: "10000"
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: POLL_INTERVAL
+        value: "12000"
+      - key: START_BLOCK
+        value: "0"
+      - key: LOG_LEVEL
+        value: info
+
+  # Frontend
   - type: web
     name: panboo-frontend
     env: static
@@ -16,7 +55,10 @@ services:
       - key: VITE_PANBOO_BNB_PAIR
         value: "0x0000000000000000000000000000000000000000"
       - key: VITE_API_URL
-        value: "https://panboo-api.onrender.com"
+        fromService:
+          type: web
+          name: panboo-api
+          envVarKey: RENDER_EXTERNAL_URL
       - key: VITE_RPC_URL
         value: "https://bsc-dataseed.binance.org"
       - key: VITE_WALLETCONNECT_ID
