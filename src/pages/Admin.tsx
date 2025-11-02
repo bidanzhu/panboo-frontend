@@ -6,7 +6,7 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { ADDRESSES } from '@/contracts/addresses';
 import { PANBOO_TOKEN_ABI, MASTERCHEF_ABI } from '@/contracts/abis';
 import { parseUnits, formatUnits } from 'ethers';
-import { Shield, AlertCircle, Settings, Heart, Zap, TrendingUp } from 'lucide-react';
+import { Shield, AlertCircle, Settings, Heart, Zap, TrendingUp, Server } from 'lucide-react';
 import { toast } from 'sonner';
 import { useChainReady } from '@/hooks';
 import { formatAddress } from '@/utils';
@@ -91,6 +91,10 @@ export function Admin() {
   const [updatePoolId, setUpdatePoolId] = useState('');
   const [updatePoolAllocPoint, setUpdatePoolAllocPoint] = useState('');
 
+  // Backend configuration state
+  const [backendConfig, setBackendConfig] = useState<any>(null);
+  const [newPollInterval, setNewPollInterval] = useState('');
+
   // Check if address is excluded from tax
   const { data: isExcluded, refetch: refetchExcluded } = useReadContract({
     address: ADDRESSES.PANBOO_TOKEN,
@@ -163,6 +167,27 @@ export function Admin() {
     (contractOwner && address.toLowerCase() === (contractOwner as string).toLowerCase()) ||
     isDevelopmentMode
   );
+
+  // Fetch backend configuration
+  useEffect(() => {
+    const fetchBackendConfig = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+        const response = await fetch(`${apiUrl}/config`);
+        if (response.ok) {
+          const data = await response.json();
+          setBackendConfig(data);
+          setNewPollInterval((data.pollInterval / 3600000).toString()); // Convert to hours
+        }
+      } catch (error) {
+        console.error('Error fetching backend config:', error);
+      }
+    };
+
+    if (isConnected && isOwner) {
+      fetchBackendConfig();
+    }
+  }, [isConnected, isOwner, contractOwner, address]);
 
   // Schedule tax rate change (24hr timelock)
   const handleScheduleTaxChange = async () => {
@@ -1170,6 +1195,140 @@ export function Admin() {
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Backend Configuration */}
+        <Card className="lg:col-span-2 gradient-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Server className="w-5 h-5 text-[#00C48C]" />
+              Backend Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {backendConfig ? (
+              <div className="space-y-4">
+                {/* Configuration Display */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-xs text-muted-foreground">Chain ID</p>
+                    <p className="text-lg font-bold">{backendConfig.chainId}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {backendConfig.chainId === 97 ? 'BSC Testnet' : backendConfig.chainId === 56 ? 'BSC Mainnet' : 'Unknown'}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-xs text-muted-foreground">API Port</p>
+                    <p className="text-lg font-bold">{backendConfig.port}</p>
+                  </div>
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-xs text-muted-foreground">Log Level</p>
+                    <p className="text-lg font-bold">{backendConfig.logLevel}</p>
+                  </div>
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-xs text-muted-foreground">RPC URL</p>
+                    <p className="text-sm font-mono truncate" title={backendConfig.rpcUrl}>
+                      {backendConfig.rpcUrl.split('//')[1]?.substring(0, 20)}...
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-border" />
+
+                {/* Blockchain Listener Settings */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Blockchain Listener</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-[#00C48C]/5 border border-[#00C48C]/20 rounded-md">
+                      <p className="text-xs text-muted-foreground mb-1">Poll Interval</p>
+                      <p className="text-2xl font-bold text-[#00C48C]">{backendConfig.pollIntervalHours}h</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        = {backendConfig.pollIntervalMinutes} minutes
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        = {(backendConfig.pollInterval / 1000).toLocaleString()}s
+                      </p>
+                    </div>
+                    <div className="col-span-1 md:col-span-2 p-4 bg-muted rounded-md">
+                      <p className="text-sm font-medium mb-2">Update Poll Interval</p>
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <Input
+                            type="number"
+                            value={newPollInterval}
+                            onChange={(e) => setNewPollInterval(e.target.value)}
+                            placeholder="1"
+                            min="0.1"
+                            step="0.5"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Hours between blockchain checks
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => {
+                            const hours = parseFloat(newPollInterval);
+                            if (isNaN(hours) || hours <= 0) {
+                              toast.error('Please enter a valid number of hours');
+                              return;
+                            }
+                            toast.info(
+                              `To update:\n1. Edit backend/.env\n2. Set POLL_INTERVAL=${hours * 3600000}\n3. Restart backend`,
+                              { duration: 8000 }
+                            );
+                          }}
+                          variant="outline"
+                        >
+                          Instructions
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-border" />
+
+                {/* Contract Addresses */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Contract Addresses</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2 bg-muted rounded-md">
+                      <span className="text-xs text-muted-foreground">PANBOO Token</span>
+                      <code className="text-xs font-mono">{formatAddress(backendConfig.tokenAddress)}</code>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-muted rounded-md">
+                      <span className="text-xs text-muted-foreground">MasterChef</span>
+                      <code className="text-xs font-mono">{formatAddress(backendConfig.masterChefAddress)}</code>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-muted rounded-md">
+                      <span className="text-xs text-muted-foreground">Charity Wallet</span>
+                      <code className="text-xs font-mono">{formatAddress(backendConfig.charityWallet)}</code>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-muted rounded-md">
+                      <span className="text-xs text-muted-foreground">PANBOO/BNB Pair</span>
+                      <code className="text-xs font-mono">{formatAddress(backendConfig.panbooBnbPair)}</code>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-muted-foreground p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
+                  <p className="font-medium text-blue-400 mb-1">ℹ️ How the Listener Works</p>
+                  <div className="text-blue-300 space-y-1">
+                    <p>• Listener checks blockchain every {backendConfig.pollIntervalHours} hour(s) for new transactions</p>
+                    <p>• It stores the last processed block and catches up on all missed blocks</p>
+                    <p>• Longer intervals = less RPC calls = lower rate limits, but events appear with delay</p>
+                    <p>• For testnet: 1 hour is recommended. For mainnet: 5-15 minutes is typical.</p>
+                    <p className="mt-2">• Changes to backend/.env require restarting the backend to take effect</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Server className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">Loading backend configuration...</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

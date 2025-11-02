@@ -22,8 +22,8 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [bsc.id]: http(ENV.RPC_URL),
-    [bscTestnet.id]: http(),
+    [bsc.id]: http('https://bsc-dataseed.binance.org'),
+    [bscTestnet.id]: http('https://data-seed-prebsc-1-s1.binance.org:8545'),
   },
   ssr: false,
 });

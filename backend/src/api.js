@@ -26,6 +26,28 @@ app.get('/health', (req, res) => {
   });
 });
 
+// GET /config - Backend configuration (for Admin panel)
+app.get('/config', (req, res) => {
+  try {
+    res.json({
+      chainId: config.chainId,
+      rpcUrl: config.rpcUrl,
+      pollInterval: config.pollInterval,
+      pollIntervalMinutes: (config.pollInterval / 60000).toFixed(1),
+      pollIntervalHours: (config.pollInterval / 3600000).toFixed(2),
+      tokenAddress: config.tokenAddress,
+      masterChefAddress: config.masterChefAddress,
+      charityWallet: config.charityWallet,
+      panbooBnbPair: config.panbooBnbPair,
+      port: config.port,
+      logLevel: config.logLevel,
+    });
+  } catch (error) {
+    logger.error('Error fetching config', { error: error.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ==================== Token Endpoints ====================
 
 // GET /token/price - Current token price
