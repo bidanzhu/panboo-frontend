@@ -60,20 +60,20 @@ export default function Leaderboard() {
       if (useMockData) {
         await new Promise(resolve => setTimeout(resolve, 100)); // Simulate network delay
 
-        const mockDonors = [
-          { wallet: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', amountBnb: '5.5', amountUsd: '1762.75', donationCount: 12, rank: 1 },
-          { wallet: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199', amountBnb: '3.2', amountUsd: '1025.60', donationCount: 8, rank: 2 },
-          { wallet: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', amountBnb: '2.8', amountUsd: '897.40', donationCount: 6, rank: 3 },
-          { wallet: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', amountBnb: '1.9', amountUsd: '608.95', donationCount: 5, rank: 4 },
-          { wallet: '0x5c69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f', amountBnb: '1.3', amountUsd: '416.65', donationCount: 4, rank: 5 },
+        const mockDonors: Donor[] = [
+          { address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', totalBnb: '5.5', totalUsd: '1762.75', donationCount: 12, rank: 1 },
+          { address: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199', totalBnb: '3.2', totalUsd: '1025.60', donationCount: 8, rank: 2 },
+          { address: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', totalBnb: '2.8', totalUsd: '897.40', donationCount: 6, rank: 3 },
+          { address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', totalBnb: '1.9', totalUsd: '608.95', donationCount: 5, rank: 4 },
+          { address: '0x5c69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f', totalBnb: '1.3', totalUsd: '416.65', donationCount: 4, rank: 5 },
         ];
 
-        const mockTraders = [
-          { wallet: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199', volumeBnb: '45.2', volumeUsd: '14489.60', swapCount: 128, rank: 1 },
-          { wallet: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', volumeBnb: '32.8', volumeUsd: '10515.20', swapCount: 95, rank: 2 },
-          { wallet: '0x5c69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f', volumeBnb: '28.5', volumeUsd: '9136.50', swapCount: 74, rank: 3 },
-          { wallet: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', volumeBnb: '21.3', volumeUsd: '6831.65', swapCount: 62, rank: 4 },
-          { wallet: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', volumeBnb: '18.7', volumeUsd: '5997.85', swapCount: 51, rank: 5 },
+        const mockTraders: Trader[] = [
+          { address: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199', totalVolumeBnb: '45.2', swapCount: 128, rank: 1, firstSwap: Date.now() / 1000 - 2592000, lastSwap: Date.now() / 1000 - 1200 },
+          { address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', totalVolumeBnb: '32.8', swapCount: 95, rank: 2, firstSwap: Date.now() / 1000 - 2592000, lastSwap: Date.now() / 1000 - 3600 },
+          { address: '0x5c69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f', totalVolumeBnb: '28.5', swapCount: 74, rank: 3, firstSwap: Date.now() / 1000 - 2592000, lastSwap: Date.now() / 1000 - 7200 },
+          { address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', totalVolumeBnb: '21.3', swapCount: 62, rank: 4, firstSwap: Date.now() / 1000 - 2592000, lastSwap: Date.now() / 1000 - 10800 },
+          { address: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', totalVolumeBnb: '18.7', swapCount: 51, rank: 5, firstSwap: Date.now() / 1000 - 2592000, lastSwap: Date.now() / 1000 - 14400 },
         ];
 
         const mockFarmers = [

@@ -86,49 +86,56 @@ export default function Dashboard() {
       if (useMockData) {
         await new Promise(resolve => setTimeout(resolve, 100)); // Simulate network delay
 
-        const mockStats = {
+        const mockStats: UserStats = {
           address,
           donations: {
             totalBnb: '2.5',
             totalUsd: '801.25',
-            txCount: 8,
+            count: 8,
+            rank: 4,
+            firstDonation: Date.now() / 1000 - 2592000, // 30 days ago
+            lastDonation: Date.now() / 1000 - 300, // 5 minutes ago
           },
           trading: {
-            volumeBnb: '15.3',
-            volumeUsd: '4903.65',
+            totalVolumeBnb: '15.3',
             swapCount: 24,
+            rank: 12,
+            firstSwap: Date.now() / 1000 - 2592000,
+            lastSwap: Date.now() / 1000 - 1200,
           },
           farming: {
-            totalStaked: '25000',
-            rewardsEarned: '1250',
-            poolCount: 2,
-            activePositions: 2,
+            totalDeposited: '30000',
+            totalWithdrawn: '5000',
+            totalHarvested: '1250',
             poolsParticipated: 2,
+            totalTransactions: 15,
+            rank: 8,
+            currentStaked: '25000',
+            pendingRewards: '1250',
+            activePositions: 2,
           },
           positions: [
             {
               poolId: 0,
-              poolName: 'PANBOO-BNB LP',
               stakedAmount: '15000',
               pendingRewards: '750',
-              apr: '125.5',
+              lastUpdated: Date.now() / 1000 - 3600,
             },
             {
               poolId: 1,
-              poolName: 'PANBOO-USDT LP',
               stakedAmount: '10000',
               pendingRewards: '500',
-              apr: '89.3',
+              lastUpdated: Date.now() / 1000 - 7200,
             },
           ],
         };
 
-        const mockHistory = [
-          { type: 'donation', txHash: '0xabc123...', timestamp: Date.now() / 1000 - 300, amountBnb: '0.5', amountUsd: '160.25' },
-          { type: 'swap', txHash: '0xdef456...', timestamp: Date.now() / 1000 - 1200, amountIn: '1.0', amountOut: '320500', tokenIn: 'BNB', tokenOut: 'PANBOO' },
-          { type: 'stake', txHash: '0xghi789...', timestamp: Date.now() / 1000 - 2400, poolId: 0, amount: '10000', lpSymbol: 'PANBOO-BNB LP' },
-          { type: 'harvest', txHash: '0xjkl012...', timestamp: Date.now() / 1000 - 3600, poolId: 0, amount: '250', rewardToken: 'PANBOO' },
-          { type: 'donation', txHash: '0xmno345...', timestamp: Date.now() / 1000 - 7200, amountBnb: '1.2', amountUsd: '384.60' },
+        const mockHistory: HistoryItem[] = [
+          { type: 'donation', txHash: '0xabc123...', timestamp: Date.now() / 1000 - 300, amount: '0.5', amountUsd: '160.25', poolId: null },
+          { type: 'swap', txHash: '0xdef456...', timestamp: Date.now() / 1000 - 1200, amount: '320500', amountUsd: null, poolId: null },
+          { type: 'stake', txHash: '0xghi789...', timestamp: Date.now() / 1000 - 2400, amount: '10000', amountUsd: null, poolId: 0 },
+          { type: 'harvest', txHash: '0xjkl012...', timestamp: Date.now() / 1000 - 3600, amount: '250', amountUsd: null, poolId: 0 },
+          { type: 'donation', txHash: '0xmno345...', timestamp: Date.now() / 1000 - 7200, amount: '1.2', amountUsd: '384.60', poolId: null },
         ];
 
         setStats(mockStats);
