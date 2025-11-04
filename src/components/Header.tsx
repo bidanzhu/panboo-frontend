@@ -6,12 +6,14 @@ import { cn } from '@/lib/utils';
 import { useAccount, useReadContract } from 'wagmi';
 import { ADDRESSES } from '@/contracts/addresses';
 import { PANBOO_TOKEN_ABI } from '@/contracts/abis';
-import { Shield } from 'lucide-react';
+import { Shield, Menu, X } from 'lucide-react';
+import { useState } from 'react';
 
 export function Header() {
   const location = useLocation();
   const { address, isConnected } = useAccount();
   const { theme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Read contract owner
   const { data: contractOwner } = useReadContract({
@@ -93,8 +95,56 @@ export function Header() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <WalletConnectButton />
+
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 hover:bg-accent rounded-md"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t bg-background">
+          <nav className="container mx-auto px-4 py-4 flex flex-col space-y-3">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    'text-base font-medium transition-colors hover:text-[#00C48C] py-2',
+                    isActive ? 'text-[#00C48C]' : 'text-foreground/60'
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            {/* Admin link (owner only) */}
+            {isOwner && (
+              <Link
+                to="/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  'text-base font-medium transition-colors hover:text-[#00C48C] py-2 flex items-center gap-2',
+                  location.pathname === '/admin' ? 'text-[#00C48C]' : 'text-foreground/60'
+                )}
+              >
+                <Shield className="w-4 h-4" />
+                Admin
+              </Link>
+            )}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
