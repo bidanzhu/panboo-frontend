@@ -47,8 +47,8 @@ export function Home() {
           </div>
 
           {/* Right: Animated Gradient Circle Icon */}
-          <div className="hidden lg:flex justify-center items-center">
-            <div className="relative w-96 h-96">
+          <div className="flex justify-center items-center">
+            <div className="relative w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96">
               {/* Animated outer glow */}
               <div
                 className="absolute inset-0 rounded-full bg-gradient-to-br from-[#00C48C]/20 to-emerald-600/20 blur-3xl"
