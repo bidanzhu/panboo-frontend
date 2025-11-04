@@ -81,59 +81,100 @@ export function Farms() {
               No farms available yet
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Pool</th>
-                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">TVL</th>
-                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">APR</th>
-                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Your Stake</th>
-                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pools.map((pool) => (
-                    <tr key={pool.pid} className="border-b border-border/50 last:border-0 hover:bg-[#00C48C]/5 transition-colors">
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-[#00C48C]/10 rounded-lg">
-                            <Sprout className="w-5 h-5 text-[#00C48C]" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-base">{pool.name}</div>
-                            <div className="text-xs text-muted-foreground">Pool #{pool.pid}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="text-right p-4">
-                        <div className="font-semibold text-base">{formatUSD(parseFloat(pool.tvlUsd))}</div>
-                      </td>
-                      <td className="text-right p-4">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00C48C]/10 rounded-lg">
-                          <TrendingUp className="w-4 h-4 text-[#00C48C]" />
-                          <span className="font-bold text-[#00C48C]">{pool.aprPct}%</span>
-                        </div>
-                      </td>
-                      <td className="text-right p-4 text-muted-foreground font-medium">
-                        --
-                      </td>
-                      <td className="text-right p-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            disabled={writesDisabled}
-                            className="bg-[#00C48C] hover:bg-[#00C48C]/90 text-white font-semibold"
-                          >
-                            Stake
-                          </Button>
-                        </div>
-                      </td>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border/50">
+                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Pool</th>
+                      <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">TVL</th>
+                      <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">APR</th>
+                      <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Your Stake</th>
+                      <th className="text-right p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {pools.map((pool) => (
+                      <tr key={pool.pid} className="border-b border-border/50 last:border-0 hover:bg-[#00C48C]/5 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-[#00C48C]/10 rounded-lg">
+                              <Sprout className="w-5 h-5 text-[#00C48C]" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-base">{pool.name}</div>
+                              <div className="text-xs text-muted-foreground">Pool #{pool.pid}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-right p-4">
+                          <div className="font-semibold text-base">{formatUSD(parseFloat(pool.tvlUsd))}</div>
+                        </td>
+                        <td className="text-right p-4">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00C48C]/10 rounded-lg">
+                            <TrendingUp className="w-4 h-4 text-[#00C48C]" />
+                            <span className="font-bold text-[#00C48C]">{pool.aprPct}%</span>
+                          </div>
+                        </td>
+                        <td className="text-right p-4 text-muted-foreground font-medium">
+                          --
+                        </td>
+                        <td className="text-right p-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              disabled={writesDisabled}
+                              className="bg-[#00C48C] hover:bg-[#00C48C]/90 text-white font-semibold"
+                            >
+                              Stake
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4">
+                {pools.map((pool) => (
+                  <div key={pool.pid} className="p-4 border border-border/50 rounded-lg bg-muted/30 hover:bg-[#00C48C]/5 transition-colors">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-[#00C48C]/10 rounded-lg">
+                        <Sprout className="w-5 h-5 text-[#00C48C]" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-base">{pool.name}</div>
+                        <div className="text-xs text-muted-foreground">Pool #{pool.pid}</div>
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00C48C]/10 rounded-lg">
+                        <TrendingUp className="w-4 h-4 text-[#00C48C]" />
+                        <span className="font-bold text-[#00C48C]">{pool.aprPct}%</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                      <div>
+                        <div className="text-muted-foreground text-xs mb-1">TVL</div>
+                        <div className="font-semibold">{formatUSD(parseFloat(pool.tvlUsd))}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-xs mb-1">Your Stake</div>
+                        <div className="font-medium text-muted-foreground">--</div>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={writesDisabled}
+                      className="w-full bg-[#00C48C] hover:bg-[#00C48C]/90 text-white font-semibold"
+                    >
+                      Stake
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

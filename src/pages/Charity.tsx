@@ -139,53 +139,101 @@ export function Charity() {
               No donations yet
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-4">Wallet</th>
-                    <th className="text-right p-4">Amount</th>
-                    <th className="text-right p-4">Time</th>
-                    <th className="text-right p-4">Transaction</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {donations.map((donation) => (
-                    <tr
-                      key={donation.txHash}
-                      className="border-b border-border/50 last:border-0 hover:bg-[#00C48C]/5 transition-colors"
-                    >
-                      <td className="p-4">
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-4">Wallet</th>
+                      <th className="text-right p-4">Amount</th>
+                      <th className="text-right p-4">Time</th>
+                      <th className="text-right p-4">Transaction</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {donations.map((donation) => (
+                      <tr
+                        key={donation.txHash}
+                        className="border-b border-border/50 last:border-0 hover:bg-[#00C48C]/5 transition-colors"
+                      >
+                        <td className="p-4">
+                          <a
+                            href={getBscScanUrl(donation.wallet, 'address')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-sm hover:text-[#00C48C] transition-colors"
+                          >
+                            {formatAddress(donation.wallet)}
+                          </a>
+                        </td>
+                        <td className="text-right p-4 font-semibold text-[#00C48C]">
+                          {donation.amountBnb ? formatBNB(donation.amountBnb) : '--'}
+                        </td>
+                        <td className="text-right p-4 text-sm text-muted-foreground">
+                          {formatRelativeTime(donation.timestamp)}
+                        </td>
+                        <td className="text-right p-4">
+                          <a
+                            href={getBscScanUrl(donation.txHash, 'tx')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#00C48C] hover:text-[#00C48C]/80 transition-colors"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {donations.map((donation) => (
+                  <div
+                    key={donation.txHash}
+                    className="p-4 border border-border/50 rounded-lg bg-muted/30 hover:bg-[#00C48C]/5 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground mb-1">Wallet</div>
                         <a
                           href={getBscScanUrl(donation.wallet, 'address')}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-mono text-sm hover:text-[#00C48C] transition-colors"
+                          className="font-mono text-sm hover:text-[#00C48C] transition-colors break-all"
                         >
                           {formatAddress(donation.wallet)}
                         </a>
-                      </td>
-                      <td className="text-right p-4 font-semibold text-[#00C48C]">
-                        {donation.amountBnb ? formatBNB(donation.amountBnb) : '--'}
-                      </td>
-                      <td className="text-right p-4 text-sm text-muted-foreground">
-                        {formatRelativeTime(donation.timestamp)}
-                      </td>
-                      <td className="text-right p-4">
-                        <a
-                          href={getBscScanUrl(donation.txHash, 'tx')}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#00C48C] hover:text-[#00C48C]/80 transition-colors"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <a
+                        href={getBscScanUrl(donation.txHash, 'tx')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#00C48C] hover:text-[#00C48C]/80 transition-colors ml-2 flex-shrink-0"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Amount</div>
+                        <div className="font-semibold text-[#00C48C]">
+                          {donation.amountBnb ? formatBNB(donation.amountBnb) : '--'}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">
+                          {formatRelativeTime(donation.timestamp)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
