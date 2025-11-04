@@ -99,6 +99,8 @@ export function Admin() {
   const [autoswapStatus, setAutoswapStatus] = useState<any>(null);
   const [autoswapEvaluation, setAutoswapEvaluation] = useState<any>(null);
   const [isRefreshingAutoswap, setIsRefreshingAutoswap] = useState(false);
+  const [autoswapEnabled, setAutoswapEnabled] = useState<boolean>(false);
+  const [isTogglingAutoswap, setIsTogglingAutoswap] = useState(false);
 
   // Check if address is excluded from tax
   const { data: isExcluded, refetch: refetchExcluded } = useReadContract({
@@ -192,9 +194,10 @@ export function Admin() {
     const fetchAutoswapStatus = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
-        const [statusRes, evalRes] = await Promise.all([
+        const [statusRes, evalRes, enabledRes] = await Promise.all([
           fetch(`${apiUrl}/autoswap/status`),
           fetch(`${apiUrl}/autoswap/evaluate`),
+          fetch(`${apiUrl}/autoswap/enabled`),
         ]);
 
         if (statusRes.ok) {
@@ -205,6 +208,11 @@ export function Admin() {
         if (evalRes.ok) {
           const evaluation = await evalRes.json();
           setAutoswapEvaluation(evaluation);
+        }
+
+        if (enabledRes.ok) {
+          const { enabled } = await enabledRes.json();
+          setAutoswapEnabled(enabled);
         }
       } catch (error) {
         console.error('Error fetching autoswap status:', error);
@@ -603,9 +611,10 @@ export function Admin() {
     setIsRefreshingAutoswap(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
-      const [statusRes, evalRes] = await Promise.all([
+      const [statusRes, evalRes, enabledRes] = await Promise.all([
         fetch(`${apiUrl}/autoswap/status`),
         fetch(`${apiUrl}/autoswap/evaluate`),
+        fetch(`${apiUrl}/autoswap/enabled`),
       ]);
 
       if (statusRes.ok) {
@@ -618,12 +627,42 @@ export function Admin() {
         setAutoswapEvaluation(evaluation);
       }
 
+      if (enabledRes.ok) {
+        const { enabled } = await enabledRes.json();
+        setAutoswapEnabled(enabled);
+      }
+
       toast.success('Autoswap status refreshed');
     } catch (error) {
       console.error('Error refreshing autoswap:', error);
       toast.error('Failed to refresh autoswap status');
     } finally {
       setIsRefreshingAutoswap(false);
+    }
+  };
+
+  // Toggle autoswap enabled/disabled
+  const handleToggleAutoswap = async () => {
+    setIsTogglingAutoswap(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const response = await fetch(`${apiUrl}/autoswap/enabled`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !autoswapEnabled }),
+      });
+
+      if (!response.ok) throw new Error('Failed to toggle autoswap');
+
+      const data = await response.json();
+      setAutoswapEnabled(data.enabled);
+      await handleRefreshAutoswap();
+      toast.success(data.message);
+    } catch (error: any) {
+      console.error('Error toggling autoswap:', error);
+      toast.error('Failed to toggle autoswap');
+    } finally {
+      setIsTogglingAutoswap(false);
     }
   };
 
@@ -1391,14 +1430,17 @@ export function Admin() {
                     <div className="space-y-4">
                       {/* Strategy Status */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className={`p-4 border rounded-md ${autoswapStatus.isRunning ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                        <div className={`p-4 border rounded-md ${autoswapEnabled ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
                           <p className="text-xs text-muted-foreground mb-1">Service Status</p>
                           <p className="text-lg font-bold flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${autoswapStatus.isRunning ? 'bg-green-500' : 'bg-red-500'}`} />
-                            {autoswapStatus.isRunning ? 'Running' : 'Stopped'}
+                            <span className={`w-2 h-2 rounded-full ${autoswapEnabled ? 'bg-green-500' : 'bg-red-500'}`} />
+                            {autoswapEnabled ? 'Enabled' : 'Disabled'}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Check interval: {(autoswapStatus.monitoringInterval / 60000).toFixed(1)} minutes
+                            {autoswapEnabled
+                              ? `Running: ${autoswapStatus.isRunning ? 'Yes' : 'No'} • Check interval: ${(autoswapStatus.monitoringInterval / 60000).toFixed(1)} min`
+                              : 'Autoswap is currently disabled'
+                            }
                           </p>
                         </div>
 
@@ -1476,19 +1518,34 @@ export function Admin() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleRefreshAutoswap}
-                          disabled={isRefreshingAutoswap}
-                          variant="outline"
-                          className="flex-1"
-                        >
-                          {isRefreshingAutoswap ? 'Refreshing...' : 'Refresh Status'}
-                        </Button>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleToggleAutoswap}
+                            disabled={isTogglingAutoswap}
+                            variant={autoswapEnabled ? "destructive" : "default"}
+                            className="flex-1"
+                          >
+                            {isTogglingAutoswap
+                              ? 'Toggling...'
+                              : autoswapEnabled
+                              ? 'Disable Autoswap'
+                              : 'Enable Autoswap'
+                            }
+                          </Button>
+                          <Button
+                            onClick={handleRefreshAutoswap}
+                            disabled={isRefreshingAutoswap}
+                            variant="outline"
+                            className="flex-1"
+                          >
+                            {isRefreshingAutoswap ? 'Refreshing...' : 'Refresh Status'}
+                          </Button>
+                        </div>
                         <Button
                           onClick={handleManualSwapAPI}
-                          disabled={isTxLoading || !autoswapEvaluation.shouldSwap}
-                          className="flex-1"
+                          disabled={isTxLoading || !autoswapEvaluation.shouldSwap || !autoswapEnabled}
+                          className="w-full"
                         >
                           {isTxLoading ? 'Swapping...' : 'Execute Swap Now'}
                         </Button>

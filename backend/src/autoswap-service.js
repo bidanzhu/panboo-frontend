@@ -7,6 +7,7 @@
 import { ethers } from 'ethers';
 import { logger } from './utils/logger.js';
 import AutoswapStrategy from './autoswap-strategy.js';
+import { queries } from './db.js';
 
 // Token ABI (minimal - just what we need)
 const TOKEN_ABI = [
@@ -52,9 +53,16 @@ class AutoswapService {
   /**
    * Start the price monitoring service
    */
-  start() {
+  async start() {
     if (this.isRunning) {
       logger.warn('Autoswap service already running');
+      return;
+    }
+
+    // Check if autoswap is enabled in settings
+    const enabled = await queries.getAutoswapEnabled();
+    if (!enabled) {
+      logger.info('Autoswap service is disabled in settings. Skipping start.');
       return;
     }
 
@@ -97,6 +105,14 @@ class AutoswapService {
    */
   async checkAndSwap() {
     try {
+      // Check if autoswap is still enabled
+      const enabled = await queries.getAutoswapEnabled();
+      if (!enabled) {
+        logger.info('Autoswap is disabled. Stopping service.');
+        this.stop();
+        return { action: 'disabled' };
+      }
+
       this.lastCheck = new Date().toISOString();
 
       // Track volume from recent swaps (run in background, don't block)

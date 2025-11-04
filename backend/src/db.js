@@ -198,6 +198,34 @@ async function createTables() {
     )
   `);
 
+  // System settings
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+
+  // Initialize default autoswap setting (disabled by default)
+  try {
+    const result = await db.execute({
+      sql: 'SELECT value FROM system_settings WHERE key = ?',
+      args: ['autoswap_enabled'],
+    });
+
+    if (result.rows.length === 0) {
+      // Insert default value: disabled
+      await db.execute({
+        sql: 'INSERT INTO system_settings (key, value) VALUES (?, ?)',
+        args: ['autoswap_enabled', 'false'],
+      });
+      logger.info('Autoswap setting initialized: disabled by default');
+    }
+  } catch (error) {
+    logger.error('Error initializing autoswap setting', { error: error.message });
+  }
+
   // Price history (for autoswap strategy)
   await db.execute(`
     CREATE TABLE IF NOT EXISTS price_history (
@@ -973,6 +1001,61 @@ export const queries = {
     } catch (error) {
       logger.error('Database error in getUserFarmingRank', { error: error.message, address });
       return null;
+    }
+  },
+
+  // System Settings
+  getSetting: async (key) => {
+    try {
+      const result = await db.execute({
+        sql: 'SELECT value FROM system_settings WHERE key = ?',
+        args: [key],
+      });
+      return result.rows.length > 0 ? result.rows[0].value : null;
+    } catch (error) {
+      logger.error('Database error in getSetting', { error: error.message, key });
+      return null;
+    }
+  },
+
+  setSetting: async (key, value) => {
+    try {
+      await db.execute({
+        sql: `
+          INSERT INTO system_settings (key, value, updated_at)
+          VALUES (?, ?, strftime('%s', 'now'))
+          ON CONFLICT(key) DO UPDATE SET
+            value = excluded.value,
+            updated_at = excluded.updated_at
+        `,
+        args: [key, value],
+      });
+      logger.info('Setting updated', { key, value });
+      return true;
+    } catch (error) {
+      logger.error('Database error in setSetting', { error: error.message, key, value });
+      throw error;
+    }
+  },
+
+  getAutoswapEnabled: async () => {
+    try {
+      const value = await queries.getSetting('autoswap_enabled');
+      return value === 'true';
+    } catch (error) {
+      logger.error('Error getting autoswap enabled state', { error: error.message });
+      return false; // Default to disabled
+    }
+  },
+
+  setAutoswapEnabled: async (enabled) => {
+    try {
+      await queries.setSetting('autoswap_enabled', enabled ? 'true' : 'false');
+      logger.info('Autoswap enabled state changed', { enabled });
+      return true;
+    } catch (error) {
+      logger.error('Error setting autoswap enabled state', { error: error.message, enabled });
+      throw error;
     }
   },
 };

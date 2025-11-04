@@ -316,6 +316,52 @@ app.post('/autoswap/execute', async (req, res) => {
   }
 });
 
+// GET /autoswap/enabled - Get autoswap enabled/disabled state
+app.get('/autoswap/enabled', async (req, res) => {
+  try {
+    const enabled = await queries.getAutoswapEnabled();
+    res.json({ enabled });
+  } catch (error) {
+    logger.error('Error getting autoswap enabled state', { error: error.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /autoswap/enabled - Enable or disable autoswap
+app.post('/autoswap/enabled', async (req, res) => {
+  try {
+    const { enabled } = req.body;
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled must be a boolean' });
+    }
+
+    await queries.setAutoswapEnabled(enabled);
+
+    // Start or stop the service based on the new state
+    if (!autoswapService) {
+      return res.status(503).json({ error: 'Autoswap service not initialized' });
+    }
+
+    if (enabled) {
+      await autoswapService.start();
+      logger.info('Autoswap service started via API');
+    } else {
+      autoswapService.stop();
+      logger.info('Autoswap service stopped via API');
+    }
+
+    res.json({
+      success: true,
+      enabled,
+      message: `Autoswap ${enabled ? 'enabled' : 'disabled'} successfully`,
+    });
+  } catch (error) {
+    logger.error('Error setting autoswap enabled state', { error: error.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ==================== Farm Endpoints ====================
 
 // GET /farms/pools - All farm pools with stats
