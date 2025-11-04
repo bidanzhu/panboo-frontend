@@ -110,7 +110,7 @@ Certain addresses don't pay tax:
 
 **e) Auto-Swap Mechanism**
 ```solidity
-uint256 public swapThreshold = 100_000 * 10**18; // 100k PANBOO
+uint256 public swapThreshold = 100_000 * 10**18; // 100k PANPANBOO.ORGBOO
 
 function _transfer(...) internal {
     // If accumulated tax >= threshold:

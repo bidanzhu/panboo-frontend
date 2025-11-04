@@ -35,6 +35,8 @@ export function Header() {
     { path: '/swap', label: 'Swap' },
     { path: '/farms', label: 'Farms' },
     { path: '/charity', label: 'Charity' },
+    { path: '/dashboard', label: 'Dashboard' },
+    { path: '/leaderboard', label: 'Leaderboard' },
   ];
 
   return (

@@ -30,7 +30,7 @@ export function Charity() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card className="gradient-card hover:border-[#00C48C]/30 transition-all group">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Total Donated (BNB)</p>
@@ -66,6 +66,22 @@ export function Charity() {
               <p className="text-2xl font-bold group-hover:text-[#00C48C] transition-colors">
                 {summary ? summary.txCount : '--'}
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="gradient-card hover:border-[#00C48C]/30 transition-all group border-orange-500/20">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Pending Pledges</p>
+            {isSummaryLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-orange-400 group-hover:text-orange-300 transition-colors">
+                  {summary?.pendingPledges ? parseFloat(summary.pendingPledges).toFixed(2) : '--'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">PANBOO to swap</p>
+              </>
             )}
           </CardContent>
         </Card>
@@ -130,6 +146,7 @@ export function Charity() {
                     <th className="text-left p-4">Wallet</th>
                     <th className="text-right p-4">Amount</th>
                     <th className="text-right p-4">Time</th>
+                    <th className="text-right p-4">Transaction</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,6 +170,16 @@ export function Charity() {
                       </td>
                       <td className="text-right p-4 text-sm text-muted-foreground">
                         {formatRelativeTime(donation.timestamp)}
+                      </td>
+                      <td className="text-right p-4">
+                        <a
+                          href={getBscScanUrl(donation.txHash, 'tx')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#00C48C] hover:text-[#00C48C]/80 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
                       </td>
                     </tr>
                   ))}

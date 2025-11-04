@@ -181,6 +181,7 @@ export function useFakeData() {
     totalDonatedUsd: '4006.25',
     txCount: 42,
     walletBalanceBnb: '0.75',
+    pendingPledges: '856.32',
     updatedAt: Date.now() / 1000,
   };
 

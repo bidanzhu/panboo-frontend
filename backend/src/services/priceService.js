@@ -21,6 +21,11 @@ let priceCache = {
   updatedAt: 0,
 };
 
+// Price history for block-time USD conversion
+// Stores recent prices with timestamps (Unix seconds)
+// Max 100 entries, older entries are pruned
+let priceHistory = []; // Array of { timestamp, bnbPerUsd }
+
 export function initPriceService(ethersProvider) {
   provider = ethersProvider;
   logger.info('Price service initialized');
@@ -91,13 +96,25 @@ export async function getAllPrices() {
     ]);
 
     const panbooUsd = (parseFloat(panbooBnb) * parseFloat(bnbUsd)).toString();
+    const now = Math.floor(Date.now() / 1000);
 
     priceCache = {
       panbooPerBnb: panbooBnb,
       bnbPerUsd: bnbUsd,
       panbooPerUsd: panbooUsd,
-      updatedAt: Math.floor(Date.now() / 1000),
+      updatedAt: now,
     };
+
+    // Add to price history
+    priceHistory.push({
+      timestamp: now,
+      bnbPerUsd: bnbUsd,
+    });
+
+    // Prune old entries (keep last 100)
+    if (priceHistory.length > 100) {
+      priceHistory = priceHistory.slice(-100);
+    }
 
     logger.debug('Prices updated', priceCache);
     return priceCache;
@@ -112,9 +129,57 @@ export function getCachedPrices() {
   return priceCache;
 }
 
-// Convert BNB amount to USD
+// Convert BNB amount to USD (uses current spot price)
 export function bnbToUsd(bnbAmount) {
   const bnbPrice = parseFloat(priceCache.bnbPerUsd) || 300;
   const usd = parseFloat(bnbAmount) * bnbPrice;
+  return usd.toString();
+}
+
+/**
+ * Convert BNB amount to USD using block-time pricing
+ * @param {number|string} bnbAmount - Amount in BNB
+ * @param {number} blockTimestamp - Unix timestamp of the block
+ * @returns {string} USD amount as string
+ */
+export function bnbToUsdAt(bnbAmount, blockTimestamp) {
+  // If no price history yet, fall back to current price
+  if (priceHistory.length === 0) {
+    logger.warn('No price history available, using spot price', { blockTimestamp });
+    return bnbToUsd(bnbAmount);
+  }
+
+  // Find the closest price entry to the block timestamp
+  let closestEntry = priceHistory[0];
+  let minDiff = Math.abs(blockTimestamp - closestEntry.timestamp);
+
+  for (const entry of priceHistory) {
+    const diff = Math.abs(blockTimestamp - entry.timestamp);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestEntry = entry;
+    }
+  }
+
+  // If the closest price is very old (>1 hour), use spot price and warn
+  if (minDiff > 3600) {
+    logger.warn('Closest historical price is too old, using spot price', {
+      blockTimestamp,
+      closestTimestamp: closestEntry.timestamp,
+      diffSeconds: minDiff,
+    });
+    return bnbToUsd(bnbAmount);
+  }
+
+  const bnbPrice = parseFloat(closestEntry.bnbPerUsd) || 300;
+  const usd = parseFloat(bnbAmount) * bnbPrice;
+
+  logger.debug('Using block-time price', {
+    blockTimestamp,
+    priceTimestamp: closestEntry.timestamp,
+    bnbPrice,
+    diffSeconds: minDiff,
+  });
+
   return usd.toString();
 }

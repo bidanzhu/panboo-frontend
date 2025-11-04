@@ -95,6 +95,11 @@ export function Admin() {
   const [backendConfig, setBackendConfig] = useState<any>(null);
   const [newPollInterval, setNewPollInterval] = useState('');
 
+  // Autoswap state
+  const [autoswapStatus, setAutoswapStatus] = useState<any>(null);
+  const [autoswapEvaluation, setAutoswapEvaluation] = useState<any>(null);
+  const [isRefreshingAutoswap, setIsRefreshingAutoswap] = useState(false);
+
   // Check if address is excluded from tax
   const { data: isExcluded, refetch: refetchExcluded } = useReadContract({
     address: ADDRESSES.PANBOO_TOKEN,
@@ -168,7 +173,7 @@ export function Admin() {
     isDevelopmentMode
   );
 
-  // Fetch backend configuration
+  // Fetch backend configuration and autoswap status
   useEffect(() => {
     const fetchBackendConfig = async () => {
       try {
@@ -184,8 +189,31 @@ export function Admin() {
       }
     };
 
+    const fetchAutoswapStatus = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+        const [statusRes, evalRes] = await Promise.all([
+          fetch(`${apiUrl}/autoswap/status`),
+          fetch(`${apiUrl}/autoswap/evaluate`),
+        ]);
+
+        if (statusRes.ok) {
+          const status = await statusRes.json();
+          setAutoswapStatus(status);
+        }
+
+        if (evalRes.ok) {
+          const evaluation = await evalRes.json();
+          setAutoswapEvaluation(evaluation);
+        }
+      } catch (error) {
+        console.error('Error fetching autoswap status:', error);
+      }
+    };
+
     if (isConnected && isOwner) {
       fetchBackendConfig();
+      fetchAutoswapStatus();
     }
   }, [isConnected, isOwner, contractOwner, address]);
 
@@ -567,6 +595,69 @@ export function Admin() {
     } catch (error: any) {
       console.error('Error updating pool:', error);
       toast.error(error?.message || 'Failed to update pool');
+    }
+  };
+
+  // Refresh autoswap status
+  const handleRefreshAutoswap = async () => {
+    setIsRefreshingAutoswap(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const [statusRes, evalRes] = await Promise.all([
+        fetch(`${apiUrl}/autoswap/status`),
+        fetch(`${apiUrl}/autoswap/evaluate`),
+      ]);
+
+      if (statusRes.ok) {
+        const status = await statusRes.json();
+        setAutoswapStatus(status);
+      }
+
+      if (evalRes.ok) {
+        const evaluation = await evalRes.json();
+        setAutoswapEvaluation(evaluation);
+      }
+
+      toast.success('Autoswap status refreshed');
+    } catch (error) {
+      console.error('Error refreshing autoswap:', error);
+      toast.error('Failed to refresh autoswap status');
+    } finally {
+      setIsRefreshingAutoswap(false);
+    }
+  };
+
+  // Manual trigger swap for charity (via backend API)
+  const handleManualSwapAPI = async () => {
+    if (!ensureReady()) return;
+
+    try {
+      // Check evaluation first
+      if (autoswapEvaluation && !autoswapEvaluation.shouldSwap) {
+        toast.error(
+          `Not recommended to swap now: ${autoswapEvaluation.reason}`,
+          { duration: 5000 }
+        );
+        return;
+      }
+
+      toast.info('Triggering charity swap...');
+
+      const hash = await writeContractAsync({
+        address: ADDRESSES.PANBOO_TOKEN,
+        abi: PANBOO_TOKEN_ABI,
+        functionName: 'swapForCharity',
+      });
+
+      setPendingTx(hash);
+      toast.success('Transaction submitted!');
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await handleRefreshAutoswap(); // Refresh status after swap
+      toast.success('Charity swap executed successfully!');
+    } catch (error: any) {
+      console.error('Error executing swap:', error);
+      toast.error(error?.message || 'Failed to execute swap');
     }
   };
 
@@ -1285,6 +1376,152 @@ export function Admin() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="border-t border-border" />
+
+                {/* Autoswap Strategy */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-[#00C48C]" />
+                    Price-Based Autoswap Strategy
+                  </h3>
+
+                  {autoswapStatus && autoswapEvaluation ? (
+                    <div className="space-y-4">
+                      {/* Strategy Status */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`p-4 border rounded-md ${autoswapStatus.isRunning ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                          <p className="text-xs text-muted-foreground mb-1">Service Status</p>
+                          <p className="text-lg font-bold flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${autoswapStatus.isRunning ? 'bg-green-500' : 'bg-red-500'}`} />
+                            {autoswapStatus.isRunning ? 'Running' : 'Stopped'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Check interval: {(autoswapStatus.monitoringInterval / 60000).toFixed(1)} minutes
+                          </p>
+                        </div>
+
+                        <div className={`p-4 border rounded-md ${autoswapEvaluation.shouldSwap ? 'bg-green-500/5 border-green-500/20' : 'bg-yellow-500/5 border-yellow-500/20'}`}>
+                          <p className="text-xs text-muted-foreground mb-1">Swap Recommendation</p>
+                          <p className="text-lg font-bold">
+                            {autoswapEvaluation.shouldSwap ? '✅ Execute Swap' : '⏳ Wait'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {autoswapEvaluation.reason}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Price Data */}
+                      {autoswapEvaluation.priceData && (
+                        <div className="p-4 bg-muted rounded-md">
+                          <p className="text-sm font-medium mb-3">Price Analysis</p>
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Current Price</p>
+                              <p className="text-sm font-mono">{autoswapEvaluation.priceData.currentPrice}</p>
+                              <p className="text-xs text-muted-foreground">BNB</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">MA-5</p>
+                              <p className="text-sm font-mono">{autoswapEvaluation.priceData.ma5}</p>
+                              <p className="text-xs text-muted-foreground">5-min avg</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">MA-15</p>
+                              <p className="text-sm font-mono">{autoswapEvaluation.priceData.ma15}</p>
+                              <p className="text-xs text-muted-foreground">15-min avg</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">10min Δ</p>
+                              <p className={`text-sm font-mono ${parseFloat(autoswapEvaluation.priceData.priceChange10min) > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {autoswapEvaluation.priceData.priceChange10min}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">30min Δ</p>
+                              <p className={`text-sm font-mono ${parseFloat(autoswapEvaluation.priceData.priceChange30min) > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {autoswapEvaluation.priceData.priceChange30min}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Signals */}
+                      {autoswapEvaluation.signals && (
+                        <div className="p-4 bg-muted rounded-md">
+                          <p className="text-sm font-medium mb-3">Market Signals</p>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {Object.entries(autoswapEvaluation.signals).map(([key, value]) => (
+                              <div key={key} className="flex items-center gap-2">
+                                <span className={`text-lg ${value ? '✅' : '❌'}`} />
+                                <span className="text-xs capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Accumulated Tokens */}
+                      <div className="p-4 bg-[#00C48C]/5 border border-[#00C48C]/20 rounded-md">
+                        <p className="text-xs text-muted-foreground mb-1">Accumulated Tokens</p>
+                        <p className="text-2xl font-bold text-[#00C48C]">
+                          {autoswapEvaluation.accumulatedTokens ? parseFloat(autoswapEvaluation.accumulatedTokens).toLocaleString() : '0'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Threshold: {autoswapEvaluation.threshold ? parseFloat(autoswapEvaluation.threshold).toLocaleString() : '1,000'} PANBOO
+                        </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleRefreshAutoswap}
+                          disabled={isRefreshingAutoswap}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          {isRefreshingAutoswap ? 'Refreshing...' : 'Refresh Status'}
+                        </Button>
+                        <Button
+                          onClick={handleManualSwapAPI}
+                          disabled={isTxLoading || !autoswapEvaluation.shouldSwap}
+                          className="flex-1"
+                        >
+                          {isTxLoading ? 'Swapping...' : 'Execute Swap Now'}
+                        </Button>
+                      </div>
+
+                      {/* Last Check Info */}
+                      <div className="text-xs text-muted-foreground p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
+                        <p className="font-medium text-blue-400 mb-1">ℹ️ How Autoswap Works</p>
+                        <div className="text-blue-300 space-y-1">
+                          <p>• Backend monitors price every {(autoswapStatus.monitoringInterval / 60000).toFixed(0)} minute(s)</p>
+                          <p>• Analyzes 5 market signals: uptrend, price above MA, recent gain, not dumping, momentum</p>
+                          <p>• Requires at least 3/5 positive signals to recommend swap</p>
+                          <p>• Strategy: Sell accumulated charity tokens when price is rising (maximize BNB received)</p>
+                          <p>• Last check: {autoswapStatus.lastCheck ? new Date(autoswapStatus.lastCheck).toLocaleString() : 'Never'}</p>
+                          <p>• Last swap: {autoswapStatus.lastSwap ? new Date(autoswapStatus.lastSwap).toLocaleString() : 'Never'}</p>
+                          <p>• Total swaps: {autoswapStatus.totalSwapsExecuted || 0}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Zap className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground">Loading autoswap status...</p>
+                      <Button
+                        onClick={handleRefreshAutoswap}
+                        disabled={isRefreshingAutoswap}
+                        variant="outline"
+                        className="mt-4"
+                      >
+                        {isRefreshingAutoswap ? 'Loading...' : 'Load Status'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-border" />

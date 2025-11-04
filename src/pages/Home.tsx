@@ -5,6 +5,7 @@ import { useTokenPrice, useCharitySummary, useFarmsSummary } from '@/hooks';
 import { formatUSD } from '@/utils';
 import { TrendingUp, Heart, Lock, Leaf, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PriceChart } from '@/components/charts/PriceChart';
 
 export function Home() {
   const { data: tokenPrice, isLoading: isPriceLoading } = useTokenPrice();
@@ -177,6 +178,11 @@ export function Home() {
             value={farmsSummary ? farmsSummary.activePools.toString() : '--'}
             isLoading={isFarmsLoading}
           />
+        </div>
+
+        {/* Price Chart */}
+        <div className="mt-12">
+          <PriceChart hours={24} />
         </div>
       </div>
 

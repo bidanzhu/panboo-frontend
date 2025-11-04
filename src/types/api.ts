@@ -12,6 +12,7 @@ export interface CharitySummary {
   totalDonatedUsd: string;
   txCount: number;
   walletBalanceBnb: string;
+  pendingPledges?: string; // PANBOO tokens waiting to be swapped
   updatedAt: number;
 }
 

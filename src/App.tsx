@@ -7,6 +7,8 @@ import { Swap } from './pages/Swap';
 import { Farms } from './pages/Farms';
 import { Charity } from './pages/Charity';
 import { Admin } from './pages/Admin';
+import Dashboard from './pages/Dashboard';
+import Leaderboard from './pages/Leaderboard';
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
             <Route path="/swap" element={<Swap />} />
             <Route path="/farms" element={<Farms />} />
             <Route path="/charity" element={<Charity />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/admin" element={<Admin />} />
           </Routes>
         </main>

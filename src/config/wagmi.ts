@@ -15,8 +15,8 @@ export const config = createConfig({
       metadata: {
         name: 'Panboo',
         description: 'Transparent DeFi for Charity',
-        url: 'https://panboo.org',
-        icons: ['https://panboo.org/logo.png'],
+        url: 'https://panboo.xzy',
+        icons: ['https://panboo.xzy/logo.png'],
       },
       showQrModal: true,
     }),
