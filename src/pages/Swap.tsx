@@ -1,6 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { ADDRESSES } from '@/contracts/addresses';
+import { ADDRESSES, ENV } from '@/contracts/addresses';
 import { Info, TrendingUp, TrendingDown, Heart, ExternalLink, AlertCircle, Calculator, Copy, Check, FileCode } from 'lucide-react';
 import { useTokenPrice } from '@/hooks';
 import { useState } from 'react';
@@ -12,9 +12,13 @@ export function Swap() {
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const { data: tokenPrice } = useTokenPrice();
 
-  // PancakeSwap URLs with preset tokens and chain
-  const buyUrl = `https://pancakeswap.finance/swap?chain=bsc&outputCurrency=${ADDRESSES.PANBOO_TOKEN}&inputCurrency=BNB`;
-  const sellUrl = `https://pancakeswap.finance/swap?chain=bsc&inputCurrency=${ADDRESSES.PANBOO_TOKEN}&outputCurrency=BNB`;
+  // PancakeSwap URLs with preset tokens and chain (testnet support)
+  const pancakeChain = ENV.CHAIN_ID === 97 ? 'bscTestnet' : 'bsc';
+  const buyUrl = `https://pancakeswap.finance/swap?chain=${pancakeChain}&outputCurrency=${ADDRESSES.PANBOO_TOKEN}&inputCurrency=BNB`;
+  const sellUrl = `https://pancakeswap.finance/swap?chain=${pancakeChain}&inputCurrency=${ADDRESSES.PANBOO_TOKEN}&outputCurrency=BNB`;
+
+  // BSCScan URL (testnet support)
+  const bscscanUrl = ENV.CHAIN_ID === 97 ? 'https://testnet.bscscan.com' : 'https://bscscan.com';
 
   // Copy address to clipboard
   const copyToClipboard = async (address: string, label: string) => {
@@ -178,7 +182,7 @@ export function Swap() {
                     )}
                   </button>
                   <a
-                    href={`https://bscscan.com/address/${ADDRESSES.PANBOO_TOKEN}`}
+                    href={`${bscscanUrl}/address/${ADDRESSES.PANBOO_TOKEN}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 hover:bg-accent rounded-md transition-colors"
@@ -210,7 +214,7 @@ export function Swap() {
                     )}
                   </button>
                   <a
-                    href={`https://bscscan.com/address/${ADDRESSES.PANBOO_BNB_PAIR}`}
+                    href={`${bscscanUrl}/address/${ADDRESSES.PANBOO_BNB_PAIR}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 hover:bg-accent rounded-md transition-colors"
