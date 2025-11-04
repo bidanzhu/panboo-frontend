@@ -99,10 +99,10 @@ export function Header() {
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 hover:bg-accent rounded-md"
+            className="md:hidden p-2.5 hover:bg-[#00C48C]/20 bg-[#00C48C]/10 rounded-lg border border-[#00C48C]/30 transition-all"
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-6 h-6 text-[#00C48C]" /> : <Menu className="w-6 h-6 text-[#00C48C]" />}
           </button>
         </div>
       </div>

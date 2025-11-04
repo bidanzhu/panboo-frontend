@@ -13,13 +13,13 @@ export function Home() {
   const { data: farmsSummary, isLoading: isFarmsLoading } = useFarmsSummary();
 
   return (
-    <div className="min-h-[calc(100vh-4rem)]">
+    <div className="min-h-[calc(100vh-4rem)] overflow-x-hidden">
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-20 md:py-32">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-20">
           {/* Left: Hero Text */}
-          <div>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+          <div className="max-w-full">
+            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold mb-6 leading-tight">
               Trade · Earn
               <br />
               · Donate ·
