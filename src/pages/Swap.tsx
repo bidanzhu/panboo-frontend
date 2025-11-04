@@ -1,12 +1,49 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ADDRESSES } from '@/contracts/addresses';
-import { Info, TrendingUp, TrendingDown, Heart, ExternalLink, AlertCircle } from 'lucide-react';
+import { Info, TrendingUp, TrendingDown, Heart, ExternalLink, AlertCircle, Calculator, Copy, Check, FileCode } from 'lucide-react';
+import { useTokenPrice } from '@/hooks';
+import { useState } from 'react';
+import { formatNumber } from '@/utils';
+import { toast } from 'sonner';
 
 export function Swap() {
+  const [bnbAmount, setBnbAmount] = useState('1');
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+  const { data: tokenPrice } = useTokenPrice();
+
   // PancakeSwap URLs with preset tokens and chain
   const buyUrl = `https://pancakeswap.finance/swap?chain=bsc&outputCurrency=${ADDRESSES.PANBOO_TOKEN}&inputCurrency=BNB`;
   const sellUrl = `https://pancakeswap.finance/swap?chain=bsc&inputCurrency=${ADDRESSES.PANBOO_TOKEN}&outputCurrency=BNB`;
+
+  // Copy address to clipboard
+  const copyToClipboard = async (address: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedAddress(address);
+      toast.success(`${label} copied to clipboard!`);
+      setTimeout(() => setCopiedAddress(null), 2000);
+    } catch (err) {
+      toast.error('Failed to copy address');
+    }
+  };
+
+  // Format address for display
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // Calculate amounts
+  const bnbValue = parseFloat(bnbAmount) || 0;
+  const panbooPerBnb = parseFloat(tokenPrice?.panbooPerBnb || '0');
+  const panbooPerUsd = parseFloat(tokenPrice?.panbooPerUsd || '0');
+  const bnbPerUsd = parseFloat(tokenPrice?.bnbPerUsd || '0');
+
+  const grossPanboo = bnbValue * panbooPerBnb;
+  const taxAmount = grossPanboo * 0.03; // 3% buy tax
+  const netPanboo = grossPanboo - taxAmount;
+  const charityUsd = taxAmount * panbooPerUsd;
+  const spendingUsd = bnbValue * bnbPerUsd;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -23,6 +60,176 @@ export function Swap() {
             Trade PANBOO tokens on PancakeSwap with pre-configured settings
           </p>
         </CardHeader>
+      </Card>
+
+      {/* Quick Buy Calculator */}
+      <Card className="mb-8 border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-blue-500/5">
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <Calculator className="w-5 h-5 text-purple-400" />
+            Quick Buy Calculator
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Input */}
+            <div>
+              <label className="text-sm font-semibold text-muted-foreground mb-2 block">
+                I want to spend:
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={bnbAmount}
+                  onChange={(e) => setBnbAmount(e.target.value)}
+                  placeholder="1.0"
+                  step="0.1"
+                  min="0"
+                  className="flex-1 px-4 py-3 bg-muted/50 border border-border rounded-lg text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
+                />
+                <div className="px-4 py-3 bg-muted border border-border rounded-lg font-bold text-lg">
+                  BNB
+                </div>
+              </div>
+              {bnbValue > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  ≈ ${spendingUsd.toFixed(2)} USD
+                </p>
+              )}
+            </div>
+
+            {/* Results */}
+            {bnbValue > 0 && tokenPrice && (
+              <div className="pt-4 border-t border-border/50 space-y-3">
+                <div className="flex items-center justify-between p-3 bg-[#00C48C]/10 rounded-lg border border-[#00C48C]/30">
+                  <span className="text-sm text-muted-foreground">You'll receive:</span>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-[#00C48C]">
+                      {formatNumber(netPanboo, 0)} PANBOO
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      after 3% tax
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-orange-500/10 rounded-lg border border-orange-500/30">
+                  <span className="text-sm text-muted-foreground">Buy tax (3%):</span>
+                  <div className="text-right">
+                    <div className="text-base font-semibold text-orange-400">
+                      {formatNumber(taxAmount, 0)} PANBOO
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Heart className="w-4 h-4" />
+                    Charity contribution:
+                  </span>
+                  <div className="text-right">
+                    <div className="text-base font-semibold text-purple-400">
+                      ${charityUsd.toFixed(4)} USD
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center pt-2">
+                  <p className="text-xs text-muted-foreground">
+                    💡 Price: 1 BNB = {formatNumber(panbooPerBnb, 0)} PANBOO
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {!tokenPrice && (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                Loading price data...
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Contract Addresses */}
+      <Card className="mb-8 border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-cyan-500/5">
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <FileCode className="w-5 h-5 text-blue-400" />
+            Contract Addresses
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {/* PANBOO Token */}
+            <div className="p-4 bg-muted/50 rounded-lg border border-border hover:border-blue-500/50 transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-foreground">PANBOO Token</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => copyToClipboard(ADDRESSES.PANBOO_TOKEN, 'Token address')}
+                    className="p-2 hover:bg-accent rounded-md transition-colors"
+                    title="Copy address"
+                  >
+                    {copiedAddress === ADDRESSES.PANBOO_TOKEN ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                    )}
+                  </button>
+                  <a
+                    href={`https://bscscan.com/address/${ADDRESSES.PANBOO_TOKEN}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 hover:bg-accent rounded-md transition-colors"
+                    title="View on BSCScan"
+                  >
+                    <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                  </a>
+                </div>
+              </div>
+              <code className="text-xs text-muted-foreground font-mono block">
+                {ADDRESSES.PANBOO_TOKEN}
+              </code>
+            </div>
+
+            {/* LP Pair */}
+            <div className="p-4 bg-muted/50 rounded-lg border border-border hover:border-blue-500/50 transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-foreground">PANBOO-BNB LP Pair</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => copyToClipboard(ADDRESSES.PANBOO_BNB_PAIR, 'LP Pair address')}
+                    className="p-2 hover:bg-accent rounded-md transition-colors"
+                    title="Copy address"
+                  >
+                    {copiedAddress === ADDRESSES.PANBOO_BNB_PAIR ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                    )}
+                  </button>
+                  <a
+                    href={`https://bscscan.com/address/${ADDRESSES.PANBOO_BNB_PAIR}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 hover:bg-accent rounded-md transition-colors"
+                    title="View on BSCScan"
+                  >
+                    <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                  </a>
+                </div>
+              </div>
+              <code className="text-xs text-muted-foreground font-mono block">
+                {ADDRESSES.PANBOO_BNB_PAIR}
+              </code>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center pt-2">
+              Verify contract details on BSCScan before trading
+            </p>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Trading Buttons */}
@@ -96,19 +303,29 @@ export function Swap() {
             <div>
               <h3 className="text-lg font-bold mb-2">Where Do Taxes Go?</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                Every transaction automatically contributes to real-world charity. Here's the breakdown:
+                100% of all taxes go directly to charity. Here's how it works:
               </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#00C48C] font-bold mt-0.5">•</span>
-                  <span><strong className="text-foreground">Buy (3%):</strong> <span className="text-muted-foreground">2% to charity wallet, 1% to liquidity</span></span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-orange-500 font-bold mt-0.5">•</span>
-                  <span><strong className="text-foreground">Sell (7%):</strong> <span className="text-muted-foreground">5% to charity wallet, 2% to liquidity</span></span>
-                </li>
-              </ul>
-              <p className="text-xs text-[#00C48C] mt-3 font-medium">
+              <div className="space-y-3 text-sm mb-3">
+                <div className="p-3 bg-[#00C48C]/10 rounded-lg border border-[#00C48C]/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[#00C48C] font-bold">•</span>
+                    <strong className="text-foreground">Buy Tax (3%)</strong>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-5">
+                    All 3% is collected, automatically swapped to BNB, and sent to charity wallet
+                  </p>
+                </div>
+                <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-orange-500 font-bold">•</span>
+                    <strong className="text-foreground">Sell Tax (7%)</strong>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-5">
+                    All 7% is collected, automatically swapped to BNB, and sent to charity wallet
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-[#00C48C] font-medium">
                 All charity donations are transparently tracked on the blockchain
               </p>
             </div>

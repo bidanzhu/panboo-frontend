@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Download } from 'lucide-react';
+import { X, Download, Share } from 'lucide-react';
 import { Button } from './ui/Button';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -7,17 +7,32 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+// Detect iOS
+const isIOS = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+};
+
+// Detect if running in standalone mode (already installed)
+const isInStandaloneMode = () => {
+  return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+};
+
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isiOS, setIsiOS] = useState(false);
 
   useEffect(() => {
     // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (isInStandaloneMode()) {
       setIsInstalled(true);
       return;
     }
+
+    // Check if iOS
+    const ios = isIOS();
+    setIsiOS(ios);
 
     // Check if user dismissed the prompt before
     const dismissed = localStorage.getItem('pwa-install-dismissed');
@@ -31,7 +46,15 @@ export function PWAInstallPrompt() {
       }
     }
 
-    // Listen for the beforeinstallprompt event
+    // For iOS, show prompt after delay (no beforeinstallprompt event)
+    if (ios) {
+      setTimeout(() => {
+        setShowPrompt(true);
+      }, 10000); // 10 seconds delay
+      return;
+    }
+
+    // For Android/Desktop: Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       const promptEvent = e as BeforeInstallPromptEvent;
@@ -86,7 +109,9 @@ export function PWAInstallPrompt() {
   };
 
   // Don't show if already installed or dismissed
-  if (isInstalled || !showPrompt || !deferredPrompt) {
+  // For Android/Desktop: need deferredPrompt
+  // For iOS: just need showPrompt
+  if (isInstalled || !showPrompt || (!deferredPrompt && !isiOS)) {
     return null;
   }
 
@@ -95,29 +120,49 @@ export function PWAInstallPrompt() {
       <div className="bg-card border border-border rounded-lg shadow-lg p-4">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 w-12 h-12 bg-[#00C48C]/10 rounded-lg flex items-center justify-center">
-            <Download className="w-6 h-6 text-[#00C48C]" />
+            {isiOS ? (
+              <Share className="w-6 h-6 text-[#00C48C]" />
+            ) : (
+              <Download className="w-6 h-6 text-[#00C48C]" />
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-sm mb-1">Install Panboo App</h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              Get quick access and a better experience. Install our app on your device!
-            </p>
+
+            {isiOS ? (
+              // iOS Instructions
+              <div className="text-xs text-muted-foreground mb-3">
+                <p className="mb-2">Install this app on your iPhone:</p>
+                <ol className="space-y-1 list-decimal list-inside">
+                  <li>Tap the <Share className="inline w-3 h-3" /> Share button below</li>
+                  <li>Scroll and tap "Add to Home Screen"</li>
+                  <li>Tap "Add" to confirm</li>
+                </ol>
+              </div>
+            ) : (
+              // Android/Desktop
+              <p className="text-xs text-muted-foreground mb-3">
+                Get quick access and a better experience. Install our app on your device!
+              </p>
+            )}
 
             <div className="flex gap-2">
-              <Button
-                onClick={handleInstallClick}
-                size="sm"
-                className="bg-[#00C48C] hover:bg-[#00C48C]/90 text-white"
-              >
-                Install
-              </Button>
+              {!isiOS && (
+                <Button
+                  onClick={handleInstallClick}
+                  size="sm"
+                  className="bg-[#00C48C] hover:bg-[#00C48C]/90 text-white"
+                >
+                  Install
+                </Button>
+              )}
               <Button
                 onClick={handleDismiss}
                 size="sm"
                 variant="ghost"
               >
-                Not now
+                {isiOS ? 'Got it' : 'Not now'}
               </Button>
             </div>
           </div>
