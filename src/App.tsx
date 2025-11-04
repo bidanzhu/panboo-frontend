@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { EnvValidator } from './components/EnvValidator';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { Home } from './pages/Home';
 import { Swap } from './pages/Swap';
 import { Farms } from './pages/Farms';
@@ -30,6 +31,7 @@ function App() {
         </main>
 
         <Footer />
+        <PWAInstallPrompt />
       </div>
     </BrowserRouter>
   );

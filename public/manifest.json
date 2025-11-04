@@ -1,0 +1,49 @@
+{
+  "name": "Panboo - DeFi for Charity",
+  "short_name": "Panboo",
+  "description": "Trade, Earn, and Donate - All in One. Every trade powers real-world charity through Panboo on BNB Smart Chain.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#00C48C",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["finance", "utilities"],
+  "icons": [
+    {
+      "src": "/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Swap",
+      "short_name": "Swap",
+      "description": "Swap tokens",
+      "url": "/swap",
+      "icons": [{ "src": "/pwa-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Farms",
+      "short_name": "Farms",
+      "description": "View and manage farms",
+      "url": "/farms",
+      "icons": [{ "src": "/pwa-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Charity",
+      "short_name": "Charity",
+      "description": "View charity impact",
+      "url": "/charity",
+      "icons": [{ "src": "/pwa-icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

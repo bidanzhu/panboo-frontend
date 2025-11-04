@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from './components/ThemeProvider';
 import { config } from './config/wagmi';
+import { registerServiceWorker } from './utils/registerSW';
 import App from './App';
 import './index.css';
 
@@ -29,3 +30,8 @@ createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </StrictMode>
 );
+
+// Register service worker for PWA functionality
+if (import.meta.env.PROD) {
+  registerServiceWorker();
+}
