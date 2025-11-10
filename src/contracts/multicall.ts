@@ -54,7 +54,10 @@ export function decodeResult<T>(
 /**
  * Create a Multicall3 contract instance
  */
-export function createMulticallContract(provider: ContractRunner | null): Contract {
+export function createMulticallContract(provider: ContractRunner | null): Contract | null {
+  if (!provider) {
+    return null;
+  }
   const address = getMulticall3Address();
   return new Contract(address, MULTICALL3_ABI, provider);
 }
@@ -69,6 +72,10 @@ export async function executeMulticall(
 ): Promise<Call3Result[]> {
   try {
     const multicall = createMulticallContract(provider);
+
+    if (!multicall) {
+      throw new Error('Provider is required for multicall');
+    }
 
     const result = await multicall.aggregate3(calls);
 

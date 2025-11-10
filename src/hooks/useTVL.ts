@@ -19,49 +19,49 @@ export function useTVL(pools: Pool[] = []) {
     contracts: pools.flatMap((pool) => [
       // Pool info from MasterChef
       {
-        address: ADDRESSES.MASTERCHEF,
+        address: ADDRESSES.MASTERCHEF as `0x${string}`,
         abi: MASTERCHEF_ABI as any,
-        functionName: 'poolInfo',
+        functionName: 'poolInfo' as const,
         args: [BigInt(pool.pid)],
       },
       // LP token decimals
       {
         address: pool.lpAddress as `0x${string}`,
         abi: ERC20_ABI as any,
-        functionName: 'decimals',
+        functionName: 'decimals' as const,
       },
       // LP total supply
       {
         address: pool.lpAddress as `0x${string}`,
         abi: PAIR_ABI as any,
-        functionName: 'totalSupply',
+        functionName: 'totalSupply' as const,
       },
       // LP reserves
       {
         address: pool.lpAddress as `0x${string}`,
         abi: PAIR_ABI as any,
-        functionName: 'getReserves',
+        functionName: 'getReserves' as const,
       },
       // Token0
       {
         address: pool.lpAddress as `0x${string}`,
         abi: PAIR_ABI as any,
-        functionName: 'token0',
+        functionName: 'token0' as const,
       },
       // Token1
       {
         address: pool.lpAddress as `0x${string}`,
         abi: PAIR_ABI as any,
-        functionName: 'token1',
+        functionName: 'token1' as const,
       },
       // LP balance in MasterChef (total staked)
       {
         address: pool.lpAddress as `0x${string}`,
         abi: ERC20_ABI as any,
-        functionName: 'balanceOf',
+        functionName: 'balanceOf' as const,
         args: [ADDRESSES.MASTERCHEF],
       },
-    ]) as any,
+    ]),
     query: {
       enabled: pools.length > 0 && ADDRESSES.MASTERCHEF !== '0x0000000000000000000000000000000000000000',
     },
