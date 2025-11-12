@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, usePublicClient } from 'wagmi';
 import { parseUnits } from 'ethers';
 import { ADDRESSES } from '@/contracts/addresses';
 import { MASTERCHEF_ABI, ERC20_ABI } from '@/contracts/abis';
@@ -7,6 +7,7 @@ import { useChainReady } from './useChainReady';
 import { useBnbUsd } from './useBnbUsd';
 import { calculateGasCostUSD } from '@/utils/calculations';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils';
 
 export type FarmActionStep = 'idle' | 'approving' | 'approved' | 'staking' | 'unstaking' | 'harvesting' | 'success' | 'error';
 
@@ -23,7 +24,7 @@ export function useFarmActions() {
   const { ensureReady } = useChainReady();
   const { data: bnbPrice = 320 } = useBnbUsd();
   const [actionState, setActionState] = useState<FarmActionState>({ step: 'idle' });
-
+  const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
   /**
@@ -31,10 +32,10 @@ export function useFarmActions() {
    */
   const checkAllowance = useCallback(
     async (lpAddress: string): Promise<bigint> => {
-      if (!address) return 0n;
+      if (!address || !publicClient) return 0n;
 
       try {
-        const { data: allowance } = await useReadContract({
+        const allowance = await publicClient.readContract({
           address: lpAddress as `0x${string}`,
           abi: ERC20_ABI,
           functionName: 'allowance',
@@ -47,7 +48,7 @@ export function useFarmActions() {
         return 0n;
       }
     },
-    [address]
+    [address, publicClient]
   );
 
   /**
@@ -55,7 +56,7 @@ export function useFarmActions() {
    */
   const approve = useCallback(
     async (lpAddress: string, amount: bigint): Promise<boolean> => {
-      if (!ensureReady()) return false;
+      if (!ensureReady() || !publicClient) return false;
 
       try {
         setActionState({ step: 'approving' });
@@ -68,26 +69,25 @@ export function useFarmActions() {
           args: [ADDRESSES.MASTERCHEF, amount],
         });
 
-        setActionState({ step: 'approved', txHash: hash });
-        toast.success('LP tokens approved successfully');
+        // Wait for transaction confirmation
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-        // Wait for transaction
-        const { isSuccess } = await useWaitForTransactionReceipt({ hash });
-
-        if (!isSuccess) {
+        if (receipt.status === 'success') {
+          setActionState({ step: 'approved', txHash: hash });
+          toast.success('LP tokens approved successfully');
+          return true;
+        } else {
           throw new Error('Approval transaction failed');
         }
-
-        return true;
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
         console.error('Approval error:', error);
         setActionState({ step: 'error', error: errorMessage });
         toast.error(`Approval failed: ${errorMessage}`);
         return false;
       }
     },
-    [ensureReady, writeContractAsync]
+    [ensureReady, writeContractAsync, publicClient]
   );
 
   /**
@@ -142,7 +142,7 @@ export function useFarmActions() {
 
         return true;
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
         console.error('Stake error:', error);
         setActionState({ step: 'error', error: errorMessage });
         toast.error(`Staking failed: ${errorMessage}`);
@@ -184,7 +184,7 @@ export function useFarmActions() {
 
         return true;
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
         console.error('Unstake error:', error);
         setActionState({ step: 'error', error: errorMessage });
         toast.error(`Unstaking failed: ${errorMessage}`);
@@ -224,7 +224,7 @@ export function useFarmActions() {
 
         return true;
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
         console.error('Harvest error:', error);
         setActionState({ step: 'error', error: errorMessage });
         toast.error(`Harvest failed: ${errorMessage}`);
@@ -298,7 +298,7 @@ export function useFarmActions() {
 
         return true;
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = getErrorMessage(error);
         console.error('Emergency withdraw error:', error);
         setActionState({ step: 'error', error: errorMessage });
         toast.error(`Emergency withdrawal failed: ${errorMessage}`);
