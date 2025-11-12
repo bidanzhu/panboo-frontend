@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import { ethers } from 'ethers';
 import Decimal from 'decimal.js';
 import { config } from './config.js';
@@ -43,9 +45,49 @@ async function initAutoswapService() {
   }
 }
 
-// Middleware
-app.use(cors({ origin: config.corsOrigin }));
-app.use(express.json());
+// Security Middleware
+app.use(helmet()); // Add security headers
+
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests from this IP, please try again later.',
+  handler: (req, res) => {
+    logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json({
+      error: 'Too many requests',
+      message: 'Please try again later',
+      retryAfter: Math.ceil(req.rateLimit.resetTime / 1000),
+    });
+  },
+});
+
+// Stricter rate limiting for POST endpoints
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 POST requests per windowMs
+  skipSuccessfulRequests: false,
+  message: 'Too many requests from this IP, please try again later.',
+});
+
+app.use(limiter); // Apply to all routes
+
+// CORS Configuration
+const corsOptions = {
+  origin: config.corsOrigin === '*'
+    ? true // Allow all origins in development
+    : config.corsOrigin.split(',').map(origin => origin.trim()),
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400, // 24 hours
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -295,7 +337,7 @@ app.get('/autoswap/evaluate', async (req, res) => {
 // POST /autoswap/execute - Manually trigger swap (owner only)
 // Note: This endpoint is for monitoring only. Actual swap execution
 // requires the owner to sign the transaction from the frontend.
-app.post('/autoswap/execute', async (req, res) => {
+app.post('/autoswap/execute', strictLimiter, async (req, res) => {
   try {
     if (!autoswapService) {
       return res.status(503).json({ error: 'Autoswap service not initialized' });
@@ -328,7 +370,7 @@ app.get('/autoswap/enabled', async (req, res) => {
 });
 
 // POST /autoswap/enabled - Enable or disable autoswap
-app.post('/autoswap/enabled', async (req, res) => {
+app.post('/autoswap/enabled', strictLimiter, async (req, res) => {
   try {
     const { enabled } = req.body;
 

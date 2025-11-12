@@ -32,7 +32,7 @@ export const config = {
 
   // API Server
   port: parseInt(process.env.PORT || '3001'),
-  corsOrigin: process.env.CORS_ORIGIN || '*',
+  corsOrigin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? 'https://yourdomain.com' : '*'),
 
   // Listener
   pollInterval: parseInt(process.env.POLL_INTERVAL || '12000'), // 12 seconds
