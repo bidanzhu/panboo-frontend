@@ -33,6 +33,16 @@ interface Farmer {
   lastActivity: number;
 }
 
+interface MockFarmer {
+  wallet: string;
+  totalStaked: string;
+  totalPanbooDeposited: string;
+  totalBnbDeposited: string;
+  rewardsEarned: string;
+  poolCount: number;
+  rank: number;
+}
+
 type LeaderboardTab = 'donors' | 'traders' | 'farmers';
 
 export default function Leaderboard() {
@@ -76,7 +86,7 @@ export default function Leaderboard() {
           { address: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', totalVolumeBnb: '18.7', swapCount: 51, rank: 5, firstSwap: Date.now() / 1000 - 2592000, lastSwap: Date.now() / 1000 - 14400 },
         ];
 
-        const mockFarmers = [
+        const mockFarmers: MockFarmer[] = [
           {
             wallet: '0x5c69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f',
             totalStaked: '125000',
@@ -128,7 +138,7 @@ export default function Leaderboard() {
         setTraders(mockTraders);
 
         // Map farmers data to include all fields
-        const mappedFarmers = mockFarmers.map((f: any) => ({
+        const mappedFarmers = mockFarmers.map((f: MockFarmer): Farmer => ({
           rank: f.rank,
           address: f.wallet,
           totalStaked: f.totalStaked,

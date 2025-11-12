@@ -34,3 +34,27 @@ export function isValidAddress(address: string): boolean {
 export function isSameAddress(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
+
+/**
+ * Type-safe error message extraction
+ * @param error Unknown error object
+ * @returns User-friendly error message
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const msg = (error as { message: unknown }).message;
+    if (typeof msg === 'string') {
+      return msg;
+    }
+  }
+
+  return 'An unknown error occurred';
+}

@@ -9,7 +9,7 @@ import { parseUnits, formatUnits } from 'ethers';
 import { Shield, AlertCircle, Settings, Heart, Zap, TrendingUp, Server } from 'lucide-react';
 import { toast } from 'sonner';
 import { useChainReady } from '@/hooks';
-import { formatAddress } from '@/utils';
+import { formatAddress, getErrorMessage } from '@/utils';
 
 export function Admin() {
   const { address, isConnected } = useAccount();
@@ -258,9 +258,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchPendingTax();
       toast.success(`Tax change scheduled! Executes in 24 hours.`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error scheduling tax change:', error);
-      toast.error(error?.message || 'Failed to schedule tax change');
+      toast.error(getErrorMessage(error) || 'Failed to schedule tax change');
     }
   };
 
@@ -285,9 +285,9 @@ export function Admin() {
       refetchSellTax();
       refetchPendingTax();
       toast.success('Tax rates updated!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error executing tax change:', error);
-      toast.error(error?.message || 'Failed to execute tax change');
+      toast.error(getErrorMessage(error) || 'Failed to execute tax change');
     }
   };
 
@@ -310,9 +310,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchPendingTax();
       toast.success('Tax change cancelled!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cancelling tax change:', error);
-      toast.error(error?.message || 'Failed to cancel tax change');
+      toast.error(getErrorMessage(error) || 'Failed to cancel tax change');
     }
   };
 
@@ -341,9 +341,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchCharityWallet();
       toast.success('Charity wallet updated!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating charity wallet:', error);
-      toast.error(error?.message || 'Failed to update charity wallet');
+      toast.error(getErrorMessage(error) || 'Failed to update charity wallet');
     }
   };
 
@@ -369,9 +369,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchThreshold();
       toast.success(`Swap threshold updated to ${newSwapThreshold} PANBOO`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating swap threshold:', error);
-      toast.error(error?.message || 'Failed to update swap threshold');
+      toast.error(getErrorMessage(error) || 'Failed to update swap threshold');
     }
   };
 
@@ -396,9 +396,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchSwapEnabled();
       toast.success(`Auto-swap ${newState ? 'enabled' : 'disabled'}!`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling swap:', error);
-      toast.error(error?.message || 'Failed to toggle swap');
+      toast.error(getErrorMessage(error) || 'Failed to toggle swap');
     }
   };
 
@@ -423,9 +423,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchTradingEnabled();
       toast.success(`Trading ${newState ? 'enabled' : 'disabled'}!`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling trading:', error);
-      toast.error(error?.message || 'Failed to toggle trading');
+      toast.error(getErrorMessage(error) || 'Failed to toggle trading');
     }
   };
 
@@ -447,9 +447,9 @@ export function Admin() {
 
       await new Promise(resolve => setTimeout(resolve, 3000));
       toast.success('Manual donation complete! Check charity wallet on BscScan.');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error during manual swap:', error);
-      toast.error(error?.message || 'Failed to execute manual swap');
+      toast.error(getErrorMessage(error) || 'Failed to execute manual swap');
     }
   };
 
@@ -480,9 +480,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchRewardPerBlock();
       toast.success(`Emission rate updated to ${newEmissionRate} PNB/block`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating emission rate:', error);
-      toast.error(error?.message || 'Failed to update emission rate');
+      toast.error(getErrorMessage(error) || 'Failed to update emission rate');
     }
   };
 
@@ -511,9 +511,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       refetchExcluded();
       toast.success(`Address ${exclude ? 'excluded from' : 'included in'} tax!`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling tax exclusion:', error);
-      toast.error(error?.message || 'Failed to update tax exclusion');
+      toast.error(getErrorMessage(error) || 'Failed to update tax exclusion');
     }
   };
 
@@ -559,9 +559,9 @@ export function Admin() {
       toast.success(`Pool added with ${allocPoint} allocation points!`);
       setNewPoolLpToken('');
       setNewPoolAllocPoint('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding pool:', error);
-      toast.error(error?.message || 'Failed to add pool');
+      toast.error(getErrorMessage(error) || 'Failed to add pool');
     }
   };
 
@@ -600,9 +600,9 @@ export function Admin() {
       toast.success(`Pool ${pid} updated to ${allocPoint} points!`);
       setUpdatePoolId('');
       setUpdatePoolAllocPoint('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating pool:', error);
-      toast.error(error?.message || 'Failed to update pool');
+      toast.error(getErrorMessage(error) || 'Failed to update pool');
     }
   };
 
@@ -658,7 +658,7 @@ export function Admin() {
       setAutoswapEnabled(data.enabled);
       await handleRefreshAutoswap();
       toast.success(data.message);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling autoswap:', error);
       toast.error('Failed to toggle autoswap');
     } finally {
@@ -694,9 +694,9 @@ export function Admin() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       await handleRefreshAutoswap(); // Refresh status after swap
       toast.success('Charity swap executed successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error executing swap:', error);
-      toast.error(error?.message || 'Failed to execute swap');
+      toast.error(getErrorMessage(error) || 'Failed to execute swap');
     }
   };
 

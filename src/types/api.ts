@@ -44,12 +44,42 @@ export interface UserFarm {
 
 export type LiveFeedType = 'buy' | 'sell' | 'donation' | 'harvest' | 'swap' | 'stake';
 
+// Data types for different feed types
+export interface BuySellFeedData {
+  wallet: string;
+  amount: string;
+  amountUsd?: string;
+  isBuy: boolean;
+}
+
+export interface DonationFeedData {
+  wallet: string;
+  panbooAmount: string;
+  bnbAmount: string;
+  usdAmount?: string;
+}
+
+export interface HarvestFeedData {
+  wallet: string;
+  rewardAmount: string;
+  poolId: number;
+}
+
+export interface StakeFeedData {
+  wallet: string;
+  amount: string;
+  poolId: number;
+  isDeposit: boolean;
+}
+
+export type LiveFeedData = BuySellFeedData | DonationFeedData | HarvestFeedData | StakeFeedData | Record<string, unknown>;
+
 export interface LiveFeedItem {
   id: string;
   type: LiveFeedType;
   txHash: string;
   timestamp: number;
-  data: any; // Flexible data structure depending on feed type
+  data: LiveFeedData;
 }
 
 export interface FarmsSummary {
