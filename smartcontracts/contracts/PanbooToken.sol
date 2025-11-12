@@ -223,7 +223,17 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Swap accumulated tokens for BNB and send to charity
+     * @notice Swaps accumulated tax tokens for BNB and donates to charity
+     * @dev Protected by reentrancy guard and swap lock. Includes MEV protection via maxSwapBps
+     * @param tokenAmount Amount of tokens to swap (will be capped at calculateMaxSwapAmount())
+     *
+     * Requirements:
+     * - tokenAmount must be > 0
+     * - Contract must have sufficient token balance
+     * - Non-owner calls are rate-limited to 1 per block
+     * - Slippage protection applied via _calculateMinBNBOutput()
+     *
+     * Emits: {Donated} event with swap details
      */
     function swapAndDonate(uint256 tokenAmount) public nonReentrant lockTheSwap {
         require(tokenAmount > 0, "No tokens to swap");
@@ -347,7 +357,18 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Schedule tax rate change (executes after 24hr delay)
+     * @notice Schedules a tax rate change with 24-hour timelock
+     * @dev Enforces minimum 1% and maximum 10% tax rates for security
+     * @param newBuyTax New buy tax in basis points (100-1000, representing 1%-10%)
+     * @param newSellTax New sell tax in basis points (100-1000, representing 1%-10%)
+     *
+     * Requirements:
+     * - Only callable by owner
+     * - newBuyTax must be >= 100 (1%) and <= 1000 (10%)
+     * - newSellTax must be >= 100 (1%) and <= 1000 (10%)
+     * - Must call executeTaxRateChange() after 24 hours to apply changes
+     *
+     * Emits: {TaxChangeScheduled} event
      */
     function scheduleTaxRateChange(uint256 newBuyTax, uint256 newSellTax) external onlyOwner {
         require(newBuyTax >= MIN_TAX_BPS, "Buy tax too low"); // Min 1%
@@ -424,7 +445,16 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Update charity wallet
+     * @notice Updates the charity wallet address
+     * @dev Validates that new wallet is not a contract or zero address
+     * @param newWallet New charity wallet address (must be EOA, not contract)
+     *
+     * Requirements:
+     * - Only callable by owner
+     * - newWallet cannot be zero address
+     * - newWallet cannot be a contract address (must be EOA for security)
+     *
+     * Emits: {CharityWalletUpdated} event
      */
     function setCharityWallet(address newWallet) external onlyOwner {
         require(newWallet != address(0), "Cannot be zero address");
@@ -469,7 +499,19 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Update slippage tolerance for swaps
+     * @notice Updates slippage tolerance for token swaps (MEV/sandwich attack protection)
+     * @dev Used in _calculateMinBNBOutput() to determine minimum acceptable swap output
+     * @param newSlippageBps New slippage tolerance in basis points (0-1000, representing 0%-10%)
+     *
+     * Requirements:
+     * - Only callable by owner
+     * - newSlippageBps must be <= 1000 (10%)
+     *
+     * Recommended Values:
+     * - 100-300 bps (1%-3%) for normal conditions
+     * - 500+ bps (5%+) for high volatility periods
+     *
+     * Emits: {SlippageToleranceUpdated} event
      */
     function setSlippageTolerance(uint256 newSlippageBps) external onlyOwner {
         require(newSlippageBps <= 1000, "Slippage too high"); // Max 10%
