@@ -47,7 +47,8 @@ async function main() {
     TOKEN_SYMBOL,
     TOTAL_SUPPLY,
     CHARITY_WALLET,
-    PANCAKE_ROUTER
+    PANCAKE_ROUTER,
+    PANCAKE_FACTORY
   );
   await panbooToken.waitForDeployment();
   const tokenAddress = await panbooToken.getAddress();

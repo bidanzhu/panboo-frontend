@@ -47,6 +47,7 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
 
     // Tax change timelock (24 hours)
     uint256 public constant TAX_CHANGE_DELAY = 24 hours;
+    uint256 public constant MIN_TAX_BPS = 100; // Minimum 1% to ensure charity mechanism
     uint256 public pendingBuyTaxBps;
     uint256 public pendingSellTaxBps;
     uint256 public taxChangeTimestamp;
@@ -63,6 +64,9 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     // Minimum BNB amount to trigger donation (anti-dust)
     uint256 public minDonationBNB = 0.05 ether; // 0.05 BNB minimum
 
+    // Slippage protection (in basis points: 100 = 1%)
+    uint256 public slippageToleranceBps = 200; // 2% slippage tolerance
+
     // Rate limiting for auto-swaps
     uint256 public lastAutoSwapBlock;
 
@@ -70,6 +74,7 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     address public charityWallet;
     address public pancakeRouter;
     address public pancakePair; // Primary PNB/BNB pair (used for max swap calculation)
+    address public immutable pancakeFactory; // Immutable factory address
 
     // Multi-AMM pair support
     mapping(address => bool) public isAMMPair;
@@ -108,6 +113,7 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     event RouterUpdated(address indexed newRouter);
     event PrimaryPairUpdated(address indexed newPair);
     event TradingEnabledSet(bool enabled);
+    event SlippageToleranceUpdated(uint256 newSlippageBps);
 
     modifier lockTheSwap {
         inSwap = true;
@@ -120,24 +126,21 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
         string memory symbol,
         uint256 totalSupply,
         address _charityWallet,
-        address _pancakeRouter
+        address _pancakeRouter,
+        address _pancakeFactory
     ) ERC20(name, symbol) Ownable(msg.sender) {
         require(_charityWallet != address(0), "Charity wallet cannot be zero address");
         require(_pancakeRouter != address(0), "Router cannot be zero address");
+        require(_pancakeFactory != address(0), "Factory cannot be zero address");
+        require(_isContract(_charityWallet) == false, "Charity wallet cannot be contract");
 
         charityWallet = _charityWallet;
         pancakeRouter = _pancakeRouter;
+        pancakeFactory = _pancakeFactory;
 
         // Create PancakeSwap pair
         address wbnb = IPancakeRouter02(_pancakeRouter).WETH();
-        // Get factory from router to support both mainnet and testnet
-        address factory;
-        if (block.chainid == 56) {
-            factory = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; // BSC Mainnet
-        } else {
-            factory = 0x6725F303b657a9451d8BA641348b6761A6CC7a17; // BSC Testnet
-        }
-        pancakePair = IPancakeFactory(factory).createPair(address(this), wbnb);
+        pancakePair = IPancakeFactory(_pancakeFactory).createPair(address(this), wbnb);
 
         // Mark primary pair as AMM pair
         isAMMPair[pancakePair] = true;
@@ -149,6 +152,17 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
 
         // Mint initial supply to deployer
         _mint(msg.sender, totalSupply);
+    }
+
+    /**
+     * @dev Check if address is a contract
+     */
+    function _isContract(address account) private view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(account)
+        }
+        return size > 0;
     }
 
     /**
@@ -238,13 +252,16 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
             _approve(address(this), pancakeRouter, type(uint256).max);
         }
 
+        // Calculate minimum expected BNB output with slippage protection
+        uint256 minBNBOutput = _calculateMinBNBOutput(tokenAmount);
+
         // Record BNB before swap
         uint256 initialBalance = address(this).balance;
 
-        // Swap tokens for BNB
+        // Swap tokens for BNB with slippage protection
         IPancakeRouter02(pancakeRouter).swapExactTokensForETHSupportingFeeOnTransferTokens(
             tokenAmount,
-            0, // Accept any amount of BNB
+            minBNBOutput, // Minimum acceptable output (slippage protected)
             path,
             address(this),
             block.timestamp + 300
@@ -262,6 +279,41 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
         } else if (bnbReceived > 0) {
             // Skip donation, keep BNB in contract for next time
             emit DonationSkipped(bnbReceived, minDonationBNB);
+        }
+    }
+
+    /**
+     * @dev Calculate minimum BNB output for swap with slippage protection
+     */
+    function _calculateMinBNBOutput(uint256 tokenAmount) private view returns (uint256) {
+        try IPancakePair(pancakePair).getReserves() returns (
+            uint112 reserve0,
+            uint112 reserve1,
+            uint32
+        ) {
+            address token0 = IPancakePair(pancakePair).token0();
+            (uint256 pnbReserve, uint256 bnbReserve) = token0 == address(this)
+                ? (uint256(reserve0), uint256(reserve1))
+                : (uint256(reserve1), uint256(reserve0));
+
+            if (pnbReserve == 0 || bnbReserve == 0) {
+                return 0;
+            }
+
+            // Calculate expected output using constant product formula
+            // amountOut = (amountIn * reserveOut) / (reserveIn + amountIn)
+            uint256 amountInWithFee = tokenAmount * 9975; // 0.25% PancakeSwap fee
+            uint256 numerator = amountInWithFee * bnbReserve;
+            uint256 denominator = (pnbReserve * 10000) + amountInWithFee;
+            uint256 expectedOutput = numerator / denominator;
+
+            // Apply slippage tolerance
+            uint256 minOutput = (expectedOutput * (10000 - slippageToleranceBps)) / 10000;
+
+            return minOutput;
+        } catch {
+            // If reserves can't be read, accept any amount (fallback behavior)
+            return 0;
         }
     }
 
@@ -298,6 +350,8 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
      * @dev Schedule tax rate change (executes after 24hr delay)
      */
     function scheduleTaxRateChange(uint256 newBuyTax, uint256 newSellTax) external onlyOwner {
+        require(newBuyTax >= MIN_TAX_BPS, "Buy tax too low"); // Min 1%
+        require(newSellTax >= MIN_TAX_BPS, "Sell tax too low"); // Min 1%
         require(newBuyTax <= 1000, "Buy tax too high"); // Max 10%
         require(newSellTax <= 1000, "Sell tax too high"); // Max 10%
 
@@ -374,6 +428,7 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
      */
     function setCharityWallet(address newWallet) external onlyOwner {
         require(newWallet != address(0), "Cannot be zero address");
+        require(_isContract(newWallet) == false, "Cannot be contract address");
         charityWallet = newWallet;
         emit CharityWalletUpdated(newWallet);
     }
@@ -411,6 +466,15 @@ contract PanbooToken is ERC20, Ownable, ReentrancyGuard {
     function setMinDonationBNB(uint256 newMin) external onlyOwner {
         minDonationBNB = newMin;
         emit MinDonationUpdated(newMin);
+    }
+
+    /**
+     * @dev Update slippage tolerance for swaps
+     */
+    function setSlippageTolerance(uint256 newSlippageBps) external onlyOwner {
+        require(newSlippageBps <= 1000, "Slippage too high"); // Max 10%
+        slippageToleranceBps = newSlippageBps;
+        emit SlippageToleranceUpdated(newSlippageBps);
     }
 
     /**

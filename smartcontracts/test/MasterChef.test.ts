@@ -44,7 +44,8 @@ describe("MasterChef", function () {
       "PNB",
       TOTAL_SUPPLY,
       charity.address,
-      await router.getAddress()
+      await router.getAddress(),
+      FACTORY_ADDRESS
     );
 
     // Deploy LP token (mock)
@@ -53,7 +54,8 @@ describe("MasterChef", function () {
       "PNB-BNB",
       ethers.parseUnits("1000000", 18),
       charity.address,
-      await router.getAddress()
+      await router.getAddress(),
+      FACTORY_ADDRESS
     );
 
     // Get current block number
@@ -170,7 +172,7 @@ describe("MasterChef", function () {
       for (let i = 0; i < Number(maxPools); i++) {
         const mockLP = await (
           await ethers.getContractFactory("PanbooToken")
-        ).deploy("LP" + i, "LP" + i, ethers.parseUnits("1000", 18), charity.address, await router.getAddress());
+        ).deploy("LP" + i, "LP" + i, ethers.parseUnits("1000", 18), charity.address, await router.getAddress(), FACTORY_ADDRESS);
 
         await masterChef.add(100, await mockLP.getAddress(), false);
       }
@@ -178,7 +180,7 @@ describe("MasterChef", function () {
       // Try to add one more
       const extraLP = await (
         await ethers.getContractFactory("PanbooToken")
-      ).deploy("ExtraLP", "XLP", ethers.parseUnits("1000", 18), charity.address, await router.getAddress());
+      ).deploy("ExtraLP", "XLP", ethers.parseUnits("1000", 18), charity.address, await router.getAddress(), FACTORY_ADDRESS);
 
       await expect(
         masterChef.add(100, await extraLP.getAddress(), false)
@@ -508,7 +510,7 @@ describe("MasterChef", function () {
       // Deploy a random token that's not LP or reward
       randomToken = await (
         await ethers.getContractFactory("PanbooToken")
-      ).deploy("Random", "RND", ethers.parseUnits("1000000", 18), charity.address, await router.getAddress());
+      ).deploy("Random", "RND", ethers.parseUnits("1000000", 18), charity.address, await router.getAddress(), FACTORY_ADDRESS);
 
       // Send some random tokens to MasterChef
       await randomToken.transfer(await masterChef.getAddress(), ethers.parseUnits("1000", 18));
@@ -576,7 +578,7 @@ describe("MasterChef", function () {
     it("Should revert if non-owner tries to recover tokens", async function () {
       const randomToken = await (
         await ethers.getContractFactory("PanbooToken")
-      ).deploy("Random", "RND", ethers.parseUnits("1000", 18), charity.address, await router.getAddress());
+      ).deploy("Random", "RND", ethers.parseUnits("1000", 18), charity.address, await router.getAddress(), FACTORY_ADDRESS);
 
       await expect(
         masterChef.connect(user1).recoverToken(await randomToken.getAddress(), 100)
@@ -637,7 +639,7 @@ describe("MasterChef", function () {
       // Deploy second LP token
       const lpToken2 = await (
         await ethers.getContractFactory("PanbooToken")
-      ).deploy("PNB-USDT LP", "PNB-USDT", ethers.parseUnits("1000000", 18), charity.address, await router.getAddress());
+      ).deploy("PNB-USDT LP", "PNB-USDT", ethers.parseUnits("1000000", 18), charity.address, await router.getAddress(), FACTORY_ADDRESS);
 
       await lpToken2.transfer(user1.address, ethers.parseUnits("10000", 18));
       await lpToken2.connect(user1).approve(await masterChef.getAddress(), ethers.MaxUint256);

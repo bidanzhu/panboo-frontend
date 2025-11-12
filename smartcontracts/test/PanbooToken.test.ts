@@ -46,7 +46,8 @@ describe("PanbooToken", function () {
       "PNB",
       TOTAL_SUPPLY,
       charity.address,
-      await router.getAddress()
+      await router.getAddress(),
+      FACTORY_ADDRESS
     );
 
     pair = await panbooToken.pancakePair();
@@ -89,7 +90,8 @@ describe("PanbooToken", function () {
           "PNB",
           TOTAL_SUPPLY,
           ethers.ZeroAddress,
-          await router.getAddress()
+          await router.getAddress(),
+          FACTORY_ADDRESS
         )
       ).to.be.revertedWith("Charity wallet cannot be zero address");
     });
@@ -102,9 +104,38 @@ describe("PanbooToken", function () {
           "PNB",
           TOTAL_SUPPLY,
           charity.address,
-          ethers.ZeroAddress
+          ethers.ZeroAddress,
+          FACTORY_ADDRESS
         )
       ).to.be.reverted; // Will revert when trying to call WETH() on zero address
+    });
+
+    it("Should revert if factory is zero address", async function () {
+      const PanbooToken = await ethers.getContractFactory("PanbooToken");
+      await expect(
+        PanbooToken.deploy(
+          "Panboo",
+          "PNB",
+          TOTAL_SUPPLY,
+          charity.address,
+          await router.getAddress(),
+          ethers.ZeroAddress
+        )
+      ).to.be.revertedWith("Factory cannot be zero address");
+    });
+
+    it("Should revert if charity wallet is a contract", async function () {
+      const PanbooToken = await ethers.getContractFactory("PanbooToken");
+      await expect(
+        PanbooToken.deploy(
+          "Panboo",
+          "PNB",
+          TOTAL_SUPPLY,
+          await router.getAddress(), // Using router address as contract
+          await router.getAddress(),
+          FACTORY_ADDRESS
+        )
+      ).to.be.revertedWith("Charity wallet cannot be contract");
     });
   });
 
@@ -204,6 +235,18 @@ describe("PanbooToken", function () {
       await expect(
         panbooToken.scheduleTaxRateChange(200, 1100)
       ).to.be.revertedWith("Sell tax too high");
+    });
+
+    it("Should revert if buy tax < 1%", async function () {
+      await expect(
+        panbooToken.scheduleTaxRateChange(50, 500) // 0.5% buy tax
+      ).to.be.revertedWith("Buy tax too low");
+    });
+
+    it("Should revert if sell tax < 1%", async function () {
+      await expect(
+        panbooToken.scheduleTaxRateChange(200, 50) // 0.5% sell tax
+      ).to.be.revertedWith("Sell tax too low");
     });
 
     it("Should execute tax rate change after timelock", async function () {
@@ -337,6 +380,25 @@ describe("PanbooToken", function () {
       await panbooToken.setMinDonationBNB(newMin);
       expect(await panbooToken.minDonationBNB()).to.equal(newMin);
     });
+
+    it("Should allow owner to update slippage tolerance", async function () {
+      const newSlippage = 500; // 5%
+      await panbooToken.setSlippageTolerance(newSlippage);
+      expect(await panbooToken.slippageToleranceBps()).to.equal(newSlippage);
+    });
+
+    it("Should revert if slippage tolerance > 10%", async function () {
+      await expect(
+        panbooToken.setSlippageTolerance(1001)
+      ).to.be.revertedWith("Slippage too high");
+    });
+
+    it("Should emit SlippageToleranceUpdated event", async function () {
+      const newSlippage = 300; // 3%
+      await expect(panbooToken.setSlippageTolerance(newSlippage))
+        .to.emit(panbooToken, "SlippageToleranceUpdated")
+        .withArgs(newSlippage);
+    });
   });
 
   describe("Charity Wallet Management", function () {
@@ -349,6 +411,12 @@ describe("PanbooToken", function () {
       await expect(
         panbooToken.setCharityWallet(ethers.ZeroAddress)
       ).to.be.revertedWith("Cannot be zero address");
+    });
+
+    it("Should revert if new charity wallet is a contract", async function () {
+      await expect(
+        panbooToken.setCharityWallet(await router.getAddress())
+      ).to.be.revertedWith("Cannot be contract address");
     });
 
     it("Should emit CharityWalletUpdated event", async function () {
